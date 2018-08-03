@@ -1,0 +1,14 @@
+<div class="card card-body">
+	<h3>Decrypt Customer Data</h3>
+	<form action="/ideas/decryptOtp" method="post">
+		<div class="form-group">
+			<label for="encpData">Encrypted OTP</label>
+			<input type="text" name="encpData" class="form-control">
+		</div>
+		<div class="form-group">
+			<label for="key">Private Key </label>
+			<input type="password" name="key" class="form-control">
+		</div>
+		<button type="submit" class="btn btn-primary">Decrypt Data</button>
+	</form>
+</div>

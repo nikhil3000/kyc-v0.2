@@ -232,14 +232,40 @@ route.post('/generateotp',(req,res)=>{
 	})
 });
 
+route.get('/decryptData',(req,res)=>
+{
+	res.render('ideas/decrypt');
+})
+
+route.post('/decryptOtp',(req,res)=>{
+	var key = req.body.key;
+	var arr = delimit(req.body.encpData);
+	var encpOTP = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
+	key = str2buff(key);
+	eccrypto.decrypt(key,encpOTP).then(plaintext=>{
+		console.log('plain text');
+		console.log(plaintext);
+	});
+})
+
 route.get('/checkOTP',(req,res)=>{
-	res.render('/ideas/otp')
+	res.render('ideas/otp');
 });
 
 route.post('/checkOTP',(req,res)=>{
-	var arr = delimit(req.body.otp);
-	
-})
+	Otp.findOne({id:req.body.id})
+	.then(otp=>{
+		if(otp.otp == req.body.otp)
+			res.send('otp verified');
+		else
+		{
+			req.flash('error_msg','Incorrect OTP');
+			res.redirect('/ideas/checkOTP')
+		}
+	})
+
+	})
+
 
 function generateSomeKeys()
 {
@@ -280,7 +306,7 @@ function delimit(str)
 	var word="";
 	var count=0;
 	var arr = [];
-	for(var i=0;i<str.length;;i++)
+	for(var i=0;i<str.length;i++)
 	{
 		c=str.charAt(i);
 		if(c!='&')
