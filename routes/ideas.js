@@ -26,6 +26,8 @@ require('../models/ideas');
 const Idea = mongoose.model('ideas');
 require('../models/keys');
 const Keys = mongoose.model('sampleKeys');
+require('../models/otpstr');
+const Otp = mongoose.model('otp');
 
 //Add idea
 route.get('/add',ensureAuthenticated,(req,res) =>{
@@ -203,6 +205,19 @@ route.post('/generateotp',(req,res)=>{
 	var otpstr= {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
 	var randstr=crypto.randomBytes(4);
 	console.log(randstr);
+			const newOtp ={
+			user: arr[5],
+			randstr: randstr
+			//details: req.body.details,
+			
+		}
+		new Otp(newOtp)
+		.save()
+		.then(otp => {
+			//req.flash('success_msg','Video idea added');f
+			//es.redirect('./ideas');
+			console.log('random otp string saved with user id in db');
+		})
 	//pkuser will be available from blockchain
 	var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
 	var pkuserbuff=str2buff(pkuser);
@@ -280,7 +295,7 @@ function delimit(str)
 	var word="";
 	var count=0;
 	var arr = [];
-	for(var i=0;i<str.length;;i++)
+	for(var i=0;i<str.length;i++)
 	{
 		c=str.charAt(i);
 		if(c!='&')
