@@ -3,8 +3,22 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
+var nodemailer = require('nodemailer');
 const route = express.Router();
 const {ensureAuthenticated} = require('../helper/auth');
+
+var transporter1 = nodemailer.createTransport({
+	service:'gmail',
+
+	auth:
+	{
+		user:'automated.nikhilyadav3000@gmail.com',
+		passs: 'nodemailerPassword'
+	}
+});
+
+var transporter = nodemailer.createTransport(
+'smtps://automated.nikhilyadav3000%40gmail.com:nodemailerPassword@smtp.gmail.com');
 
 
 //Load model
@@ -17,6 +31,101 @@ const Keys = mongoose.model('sampleKeys');
 route.get('/add',ensureAuthenticated,(req,res) =>{
 	res.render('ideas/add')
 });
+route.get('/qr',(req,res) =>{
+	res.render('ideas/qr')
+});
+//get qr from form as string and seperate data values
+route.post('/generateotp',(req,res)=>{
+	var str=req.body.qr;
+	str=str+'&';
+	var l=str.length;
+	var word="";
+	var count=0;
+	for(var i=0;i<l;i++)
+	{
+		c=str.charAt(i);
+		if(c!='&')
+		{
+		word+=c;
+		}
+		if(c=='&')
+		{
+			count++;
+			if(count==1)
+			{
+				var iv=word;
+				var iv2=str2buff(iv);
+				//console.log("buffer of qr");
+				//console.log(iv2);
+				word="";
+			}
+			else if(count==2)
+			{
+				var ephemPK=word;
+				var ephemPK2=str2buff(ephemPK);
+				//console.log("buffer of qr2");
+				//console.log(ephemPK2);
+				word="";
+			}
+			else if(count==3)
+			{
+				var ciphertext=word;
+				var ciphertext2=str2buff(ciphertext);
+				word="";
+			}
+			else if(count==4)
+			{
+				var mac=word;
+				var mac2=str2buff(mac);
+				word="";
+			}
+			//pksign=public key of verifier
+			else if(count==5)
+			{
+				var pksign=word;
+				var pksign2=str2buff(pksign);
+				word="";
+			}
+			else if(count==6)
+			{
+				var id=word;
+				word="";
+			}
+		}
+	}
+	var otpstr= {iv:iv2, ephemPublicKey:ephemPK2, ciphertext:ciphertext2, mac:mac2}
+	var randstr=crypto.randomBytes(4);
+	console.log(randstr);
+	var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
+	var pkuserbuff=str2buff(pkuser);
+	eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted) {
+		console.log("otp message encypted");
+		console.log(encrypted);
+		var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
+		
+		//var mess=encrypted.toString('hex');
+		console.log(encpStr);
+		var mailOptions ={
+			from: 'automated.nikhilyadav3000@gmail.com',
+			to: 'nikhilyadav3000@gmail.com',
+			subject : 'Sending email using nodejs',
+			text: encpStr
+		};
+		transporter.sendMail(mailOptions,function(err,info){
+			if(err)
+				console.log(err);
+			console.log(info);
+
+		});
+
+		})
+		.catch(err=>{
+			console.log(err);
+		})
+	  });
+
+
+//)
 
 //Edit Idea Form routed when edit button is clicked from list of ideas page
 route.get('/edit/:id',ensureAuthenticated,(req,res) =>{
