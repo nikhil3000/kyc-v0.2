@@ -122,18 +122,18 @@ route.post('/sign',(req,res)=>{
 		errors.push({text:'Please enter your key to sign the data'});
 	}
 
-	// if(errors.length > 0)
-	// {
-	// 	res.render('ideas/add',{
-	// 		errors:errors,
-	// 		name: req.body.name,
-	// 		address: req.body.address,
-	// 		addressProof: req.body.addressProof,
-	// 		identityProof: req.body.identityProof
-	// 	});
-	// } 
-	// else
-	// {
+	if(errors.length > 0)
+	{
+		res.render('ideas/add',{
+			errors:errors,
+			name: req.body.name,
+			address: req.body.address,
+			addressProof: req.body.addressProof,
+			identityProof: req.body.identityProof
+		});
+	} 
+	else
+	{
 		//sign data
 		const data = req.body.name + '&' + req.body.address + '&' + req.body.addressProof + '&' + req.body.identityProof;
 		var msg = crypto.createHash("sha256").update(data).digest();
@@ -194,12 +194,13 @@ route.post('/sign',(req,res)=>{
 
 		//send email
 		// res.send('hello');
-	// }
+	}
 });
 
 //get qr from form as string and seperate data values
 route.post('/generateotp',(req,res)=>{
-	var obj = delimit(req.body.qr);
+	var arr = delimit(req.body.qr);
+	var otpstr= {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
 	var randstr=crypto.randomBytes(4);
 	console.log(randstr);
 	//pkuser will be available from blockchain
@@ -231,8 +232,13 @@ route.post('/generateotp',(req,res)=>{
 	})
 });
 
-route.post('/verify',(req,res)=>{
+route.get('/checkOTP',(req,res)=>{
+	res.render('/ideas/otp')
+});
 
+route.post('/checkOTP',(req,res)=>{
+	var arr = delimit(req.body.otp);
+	
 })
 
 function generateSomeKeys()
@@ -271,10 +277,10 @@ function str2buff(str)
 function delimit(str)
 {
 	str=str+'&';
-	var l=str.length;
 	var word="";
 	var count=0;
-	for(var i=0;i<l;i++)
+	var arr = [];
+	for(var i=0;i<str.length;;i++)
 	{
 		c=str.charAt(i);
 		if(c!='&')
@@ -283,56 +289,11 @@ function delimit(str)
 		}
 		if(c=='&')
 		{
+			arr.push(word);
 			count++;
-			if(count==1)
-			{
-				var iv=word;
-				var iv2=str2buff(iv);
-				//console.log("buffer of qr");
-				//console.log(iv2);
-				word="";
-			}
-			else if(count==2)
-			{
-				var ephemPK=word;
-				var ephemPK2=str2buff(ephemPK);
-				//console.log("buffer of qr2");
-				//console.log(ephemPK2);
-				word="";
-			}
-			else if(count==3)
-			{
-				var ciphertext=word;
-				var ciphertext2=str2buff(ciphertext);
-				word="";
-			}
-			else if(count==4)
-			{
-				var mac=word;
-				var mac2=str2buff(mac);
-				word="";
-			}
-			//pksign=public key of verifier
-			else if(count==5)
-			{
-				var pksign=word;
-				var pksign2=str2buff(pksign);
-				word="";
-			}
-			else if(count==6)
-			{
-				var id=word;
-				word="";
-			}
 		}
 	}
-	var otpstr= {iv:iv2, ephemPublicKey:ephemPK2, ciphertext:ciphertext2, mac:mac2}
-	var retObj = {
-		otpstr: otpstr,
-		id: id,
-		pkverifier: pksign2
-	}
-	return retObj;
+	return arr;
 }
 
 module.exports = route;
