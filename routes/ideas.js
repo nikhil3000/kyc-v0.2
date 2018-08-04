@@ -34,8 +34,9 @@ route.get('/add',ensureAuthenticated,(req,res) =>{
 	res.render('ideas/add')
 });
 route.get('/qr',(req,res) =>{
-	res.render('ideas/qr')
+	res.render('ideas/qr',{act:"/ideas/verifySig"});
 });
+
 
 //Edit Idea Form routed when edit button is clicked from list of ideas page
 route.get('/edit/:id',ensureAuthenticated,(req,res) =>{
@@ -144,13 +145,13 @@ route.post('/sign',(req,res)=>{
 			console.log("Signature in DER format:", sig.toString('hex'));
 		});
 
+		//generate QR code using 
 		//encrypt data + public key of verifier + user id
 		pubKeyBuff = str2buff(req.body.pubKey);
 		eccrypto.encrypt(pubKeyBuff,Buffer(data))
 		.then(function(encrypted){
 			
 			var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
-			
 			var privateKeyBuff = str2buff(req.body.key);
 			var publicKey = eccrypto.getPublic(privateKeyBuff);
 			var pubKeyStr = publicKey.toString('hex');
@@ -166,37 +167,42 @@ route.post('/sign',(req,res)=>{
 			console.log('encryption failed');
 			console.log(err);
 		})
-
-
-		// eccrypto.sign(privateKey,msg)
-		// .then(function(sig){
-		// 	console.log(sig);
-		// 	var str = sig.toString('hex');
-		// 	console.log(str);
-		// 	var a= [];
-		// 	for (var i = 0, len = str.length; i < len; i+=2) {
-		// 		a.push(str.substr(i,2));
-		// 		}
-		// 	console.log(a);
-
-		// 	for (var i=0;i<a.length;i++)
-		// 		a[i] = parseInt(a[i], 16);
-		// 	const buff = Buffer.from(a);
-		// 	console.log(buff);
-		// })
-		
-		// generate qr code with encrypted data
-
-
-
-
-		//create and image for qr code and generate a pdf with it
-
-
-
-		//send email
-		// res.send('hello');
 	}
+});
+
+//verify signature scanned from the qr code
+route.post('/verifySig',(req,res)=>{
+	var arr = delimit(req.body.qr);
+	var userData = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
+	var pubKeyVerifier = str2buff(arr[4]);
+	var userid = arr[5];
+
+	//temporary arrangement otherewise decrypted should be sent to this route
+	var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
+		privateKeybuff = str2buff(privateKey);
+		eccrypto.decrypt(privateKeybuff,userData)
+		.then(plaintext=>{
+			console.log('plaintext a  ');
+			console.log(plaintext.toString());
+			var sig = "3045022100c629fd5267aaa3957e9599577b3bf4e229e0494e5bfbd8d8f18bc774ff985faa02201fd215f10efab8cd0693b9c1ae94651ef8291299ca43382a282a6ae485a2b066";
+			sig = str2buff(sig);
+			var msg = crypto.createHash("sha256").update(plaintext).digest();
+			eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
+				console.log("Signature is OK");
+				res.send('signature verified');
+			}).catch(function(err) {
+				console.log("Signature is BAD");
+				console.log(err);
+				res.send('Signature is BAD')
+			});
+
+		})
+		.catch(err=>{
+			console.log('err');
+			console.log(err);
+		})
+
+	
 });
 
 //get qr from form as string and seperate data values
@@ -250,7 +256,7 @@ route.post('/generateotp',(req,res)=>{
 		
 		transporter.sendMail(mailOptions,function(err,info){
 			if(err)
-				console.log('err');
+				console.log(err);
 			console.log(info);
 		});
 
@@ -300,7 +306,7 @@ route.post('/checkOTP',(req,res)=>{
 		}
 	})
 
-	})
+})
 
 
 function generateSomeKeys()
