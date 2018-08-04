@@ -204,28 +204,41 @@ route.post('/generateotp',(req,res)=>{
 	var arr = delimit(req.body.qr);
 	var otpstr= {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
 	var randstr=crypto.randomBytes(4);
-	console.log(randstr);
-			const newOtp ={
-			user: arr[5],
-			randstr: randstr
-			//details: req.body.details,
-			
-		}
+	var randstr = randstr.toString('hex');
+	const newOtp ={
+		id: arr[5],
+		otp: randstr			
+		};
 		new Otp(newOtp)
 		.save()
 		.then(otp => {
-			//req.flash('success_msg','Video idea added');f
-			//es.redirect('./ideas');
-			console.log('random otp string saved with user id in db');
+			// console.log('random otp string saved with user id in db');
+		})
+		.catch(err=>{
+			// console.log(err);
 		})
 	//pkuser will be available from blockchain
 	var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
 	var pkuserbuff=str2buff(pkuser);
+	console.log('rand str');
+	console.log(randstr.toString());
 	eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted) {
-		console.log("otp message encypted");
+		// console.log("otp message encypted");
 		console.log(encrypted);
+		var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
+		privateKeybuff = str2buff(privateKey);
+		// console.log(privateKeybuff);
+		// eccrypto.decrypt(privateKeybuff,encrypted)
+		// .then(plaintext=>{
+		// 	console.log('plaintext a  ');
+		// 	console.log(plaintext.toString());
+		// })
+		// .catch(err=>{
+		// 	console.log('err');
+		// 	console.log(err);
+		// })
 		var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
-		console.log(encpStr);
+		console.log('encpStr' + encpStr);
 		
 		var mailOptions ={
 			from: 'automated.nikhilyadav3000@gmail.com',
@@ -233,21 +246,22 @@ route.post('/generateotp',(req,res)=>{
 			subject : 'Sending email using nodejs',
 			text: encpStr
 		};
+
 		
 		transporter.sendMail(mailOptions,function(err,info){
 			if(err)
-				console.log(err);
+				console.log('err');
 			console.log(info);
-
 		});
 
 	})
 	.catch(err=>{
 		console.log(err);
 	})
+	res.send('hello');
 });
 
-route.get('/decryptData',(req,res)=>
+route.get('/decryptOtp',(req,res)=>
 {
 	res.render('ideas/decrypt');
 })
@@ -256,26 +270,33 @@ route.post('/decryptOtp',(req,res)=>{
 	var key = req.body.key;
 	var arr = delimit(req.body.encpData);
 	var encpOTP = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
-	key = str2buff(key);
-	eccrypto.decrypt(key,encpOTP).then(plaintext=>{
+	key1 = str2buff(key);
+	console.log(key1);
+	console.log(encpOTP);
+	eccrypto.decrypt(key1,encpOTP).then(plaintext=>{
 		console.log('plain text');
-		console.log(plaintext);
+		console.log(plaintext.toString());
+		res.render('ideas/otp',{otp:plaintext.toString()});
+	}).catch(err=>{
+		console.log(err);
 	});
 })
 
-route.get('/checkOTP',(req,res)=>{
-	res.render('ideas/otp');
-});
-
 route.post('/checkOTP',(req,res)=>{
+	console.log(req.body.id);
+	console.log(req.body.otp);
 	Otp.findOne({id:req.body.id})
 	.then(otp=>{
+		console.log(otp);
 		if(otp.otp == req.body.otp)
+		{
 			res.send('otp verified');
+			Otp.remove({id:req.body.id});
+		}
 		else
 		{
 			req.flash('error_msg','Incorrect OTP');
-			res.redirect('/ideas/checkOTP')
+			res.redirect('/ideas/decryptOtp');
 		}
 	})
 
@@ -332,6 +353,7 @@ function delimit(str)
 		{
 			arr.push(word);
 			count++;
+			word="";
 		}
 	}
 	return arr;
