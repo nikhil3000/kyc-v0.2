@@ -1,0 +1,35 @@
+<script>
+var choice = "{{choice}}";
+console.log(choice);
+
+var kycContract = web3.eth.contract([{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewKey","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"},{"name":"_pkuser","type":"string"}],"name":"addCustomer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[],"name":"kill","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewSignature","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"customer","outputs":[{"name":"signature","type":"string"},{"name":"pkuser","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"}],"name":"updateData","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"id","type":"string"},{"indexed":false,"name":"index","type":"uint256"}],"name":"custId","type":"event"}]);
+  kyc = kycContract.at("0xe88cae0766cf16ca91a1b8a12fb271cb27ee7874");
+  console.log(web3.eth.accounts)
+
+ switch ("{{choice}}") {
+ 	
+ 	case "addCustomer" :
+ 	kyc.addCustomer("{{id}}","{{signature}}","{{pkUser}}",(err,result)=>{
+ 		console.log(err);
+ 		console.log(result);
+ 	});
+  		break;
+ 	
+ 	case "viewSignature" :
+ 	kyc.viewSignature("{{id}}",(err,result)=>{
+  	console.log(err);
+  	console.log(result);
+  	});
+  		break;
+  	case "viewKey" :
+  	kyc.viewKey("{{id}}",(err,result)=>{
+  		console.log(err);
+  		console.log(result);
+  	});
+  		break;
+ 	default:
+ 		console.log('invalid choice');
+ 		break;
+ }
+
+</script>

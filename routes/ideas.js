@@ -141,9 +141,8 @@ route.post('/sign',(req,res)=>{
 		const data = req.body.name + '&' + req.body.address + '&' + req.body.addressProof + '&' + req.body.identityProof;
 		var msg = crypto.createHash("sha256").update(data).digest();
 		var buff = Buffer.from(req.body.key,'hex');
-		eccrypto.sign(buff, msg).then(function(sig) {
-			console.log("Signature in DER format:", sig.toString('hex'));
-		});
+		var id = crypto.createHash("sha256").update(data+Date.now()).digest();
+		
 
 		//generate QR code using 
 		//encrypt data + public key of verifier + user id
@@ -155,12 +154,20 @@ route.post('/sign',(req,res)=>{
 			var privateKeyBuff = str2buff(req.body.key);
 			var publicKey = eccrypto.getPublic(privateKeyBuff);
 			var pubKeyStr = publicKey.toString('hex');
-			var id = crypto.createHash("sha256").update(data+Date.now()).digest();
 			var idStr = id.toString('hex');
 			var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
 			console.log(QRdata);
 			QRCode.toDataURL(QRdata, function (err, url) {
-				res.send('<img src="' + url + '" />')
+				// res.send('<img src="' + url + '" 
+				eccrypto.sign(buff, msg).then(function(sig) {
+					console.log("Signature in DER format:", sig.toString('hex'));
+					res.render('ideas/dispQR',{
+						url:url,
+						id: idStr,
+						signature: sig.toString('hex'),
+						pkUser: req.body.pubKey
+					})
+				});				
 			})
 		})
 		.catch(function(err){
@@ -184,7 +191,7 @@ route.post('/verifySig',(req,res)=>{
 		.then(plaintext=>{
 			console.log('plaintext a  ');
 			console.log(plaintext.toString());
-			var sig = "3045022100c629fd5267aaa3957e9599577b3bf4e229e0494e5bfbd8d8f18bc774ff985faa02201fd215f10efab8cd0693b9c1ae94651ef8291299ca43382a282a6ae485a2b066";
+			var sig = req.body.sign;
 			sig = str2buff(sig);
 			var msg = crypto.createHash("sha256").update(plaintext).digest();
 			eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {

@@ -1,0 +1,14 @@
+<div class="card card-body">
+	<h3>QR code Generated</h3>
+	<img src="{{url}}">
+</div>
+
+<script>
+	kyc.addCustomer("{{id}}","{{signature}}","{{pkUser}}",(err,result)=>{
+ 		if(!err)
+ 		{
+ 			console.log(result);
+ 			window.alert('Data successfully pushed to blockchain');
+ 		}
+ 	});
+</script>
