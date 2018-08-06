@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
 var nodemailer = require('nodemailer');
+const Web3 = require('web3');
+
 const route = express.Router();
 const {ensureAuthenticated} = require('../helper/auth');
 
@@ -20,6 +22,9 @@ var transporter1 = nodemailer.createTransport({
 var transporter = nodemailer.createTransport(
 	'smtps://automated.nikhilyadav3000%40gmail.com:nodemailerPassword@smtp.gmail.com');
 
+web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/e4aa0a488ffa4b1595d3c899748448ba'));
+var kycContract = web3.eth.contract([{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewKey","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"},{"name":"_pkuser","type":"string"}],"name":"addCustomer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[],"name":"kill","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewSignature","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"customer","outputs":[{"name":"signature","type":"string"},{"name":"pkuser","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"}],"name":"updateData","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"id","type":"string"},{"indexed":false,"name":"index","type":"uint256"}],"name":"custId","type":"event"}]);
+kyc = kycContract.at("0xe88cae0766cf16ca91a1b8a12fb271cb27ee7874");
 
 //Load model
 require('../models/ideas');
@@ -99,6 +104,20 @@ route.delete('/:id',ensureAuthenticated,(req,res)=>{
 	});
 });
 
+route.get('/test',(req,res)=>{
+	var id = "87cbe143fbd4ede3c74d50c5b4c12b6e05f4f73f8d8120f30a7a8e0bb2dd4687";
+	kyc.viewSignature(id,(err,result)=>{
+		if(err)
+		{
+			console.log(err);
+			window.alert('unable to get signature');
+			res.send
+		}
+		else {
+			console.log(result);	
+		}
+	});
+})
 
 // Process Form to add data to db when submit button is clicked in add idea page
 route.post('/sign',(req,res)=>{
@@ -179,6 +198,7 @@ route.post('/sign',(req,res)=>{
 
 //verify signature scanned from the qr code
 route.post('/verifySig',(req,res)=>{
+	
 	var arr = delimit(req.body.qr);
 	var userData = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
 	var pubKeyVerifier = str2buff(arr[4]);
@@ -186,28 +206,28 @@ route.post('/verifySig',(req,res)=>{
 
 	//temporary arrangement otherewise decrypted should be sent to this route
 	var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
-		privateKeybuff = str2buff(privateKey);
-		eccrypto.decrypt(privateKeybuff,userData)
-		.then(plaintext=>{
-			console.log('plaintext a  ');
-			console.log(plaintext.toString());
-			var sig = req.body.sign;
-			sig = str2buff(sig);
-			var msg = crypto.createHash("sha256").update(plaintext).digest();
-			eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
-				console.log("Signature is OK");
-				res.send('signature verified');
-			}).catch(function(err) {
-				console.log("Signature is BAD");
-				console.log(err);
-				res.send('Signature is BAD')
-			});
-
-		})
-		.catch(err=>{
-			console.log('err');
+	privateKeybuff = str2buff(privateKey);
+	eccrypto.decrypt(privateKeybuff,userData)
+	.then(plaintext=>{
+		console.log('plaintext a  ');
+		console.log(plaintext.toString());
+		var sig = req.body.sign;	
+		sig = str2buff(sig);
+		var msg = crypto.createHash("sha256").update(plaintext).digest();
+		eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
+			console.log("Signature is OK");
+			res.send('success');
+		}).catch(function(err) {
+			console.log("Signature is BAD");
 			console.log(err);
-		})
+			res.send('failure')
+		});
+
+	})
+	.catch(err=>{
+		console.log('err');
+		console.log(err);
+	})
 
 	
 });
@@ -221,25 +241,32 @@ route.post('/generateotp',(req,res)=>{
 	const newOtp ={
 		id: arr[5],
 		otp: randstr			
-		};
-		new Otp(newOtp)
-		.save()
-		.then(otp => {
+	};
+	new Otp(newOtp)
+	.save()
+	.then(otp => {
 			// console.log('random otp string saved with user id in db');
 		})
-		.catch(err=>{
+	.catch(err=>{
 			// console.log(err);
 		})
 	//pkuser will be available from blockchain
-	var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
-	var pkuserbuff=str2buff(pkuser);
-	console.log('rand str');
-	console.log(randstr.toString());
-	eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted) {
+	// var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
+	kyc.viewKey(arr[5],(err,result)=>{
+		if(err)
+		{
+			console.log(err);
+		}
+		else {
+
+			var pkuserbuff=str2buff(result);
+			console.log('rand str');
+			console.log(randstr.toString());
+			eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted) {
 		// console.log("otp message encypted");
-		console.log(encrypted);
-		var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
-		privateKeybuff = str2buff(privateKey);
+		// console.log(encrypted);
+		// var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
+		// privateKeybuff = str2buff(privateKey);
 		// console.log(privateKeybuff);
 		// eccrypto.decrypt(privateKeybuff,encrypted)
 		// .then(plaintext=>{
@@ -268,9 +295,14 @@ route.post('/generateotp',(req,res)=>{
 		});
 
 	})
-	.catch(err=>{
-		console.log(err);
-	})
+			.catch(err=>{
+				console.log(err);
+			})
+
+		}
+	});
+
+	
 	res.send('hello');
 });
 
@@ -347,29 +379,29 @@ function str2buff(str)
 		// console.log('pubKeyBuff');
 		// console.log(pubKeyBuff);
 		return pubKeyBuff;	
-}
-
-function delimit(str)
-{
-	str=str+'&';
-	var word="";
-	var count=0;
-	var arr = [];
-	for(var i=0;i<str.length;i++)
-	{
-		c=str.charAt(i);
-		if(c!='&')
-		{
-			word+=c;
-		}
-		if(c=='&')
-		{
-			arr.push(word);
-			count++;
-			word="";
-		}
 	}
-	return arr;
-}
 
-module.exports = route;
+	function delimit(str)
+	{
+		str=str+'&';
+		var word="";
+		var count=0;
+		var arr = [];
+		for(var i=0;i<str.length;i++)
+		{
+			c=str.charAt(i);
+			if(c!='&')
+			{
+				word+=c;
+			}
+			if(c=='&')
+			{
+				arr.push(word);
+				count++;
+				word="";
+			}
+		}
+		return arr;
+	}
+
+	module.exports = route;

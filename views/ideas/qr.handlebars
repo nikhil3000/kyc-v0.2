@@ -15,13 +15,13 @@
 		var qr = $("#qr")[0].value;
 		var arr = delimit(qr);
 		var id = arr[5];
-		console.log(qr);
+		console.log(id);
 		// console.log(arr);
 		// console.log(id);
 		kyc.viewSignature(id,(err,result)=>{
 	  	if(err)
 	  	{
-	  		console.log(err);
+	  		console.log('err');
 	  		window.alert('unable to get signature');
 	  	}
 	  	else
@@ -29,10 +29,12 @@
 	  		console.log('result');
 	  		console.log(result);
 	  		$.post('/ideas/verifySig',{qr:qr,sign:result})
-	  		.then(()=>{
-	  			console.log('success');
+	  		.then((data)=>{
+	  			if(data == 'success')
+	  			window.alert("signature verified");
 	  		})
 	  		.catch(err=>{
+	  			window.alert("signature verification failed");	
 	  			console.log(err);
 	  		});
 	  	}
