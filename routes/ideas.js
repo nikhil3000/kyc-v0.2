@@ -211,17 +211,28 @@ route.post('/verifySig',(req,res)=>{
 	.then(plaintext=>{
 		console.log('plaintext a  ');
 		console.log(plaintext.toString());
-		var sig = req.body.sign;	
-		sig = str2buff(sig);
-		var msg = crypto.createHash("sha256").update(plaintext).digest();
-		eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
-			console.log("Signature is OK");
-			res.send('success');
-		}).catch(function(err) {
-			console.log("Signature is BAD");
-			console.log(err);
-			res.send('failure')
+		kyc.viewSignature(userid,(err,result)=>{
+			if(err)
+			{
+				console.log(err);
+				window.alert('unable to get signature');
+				res.send
+			}
+			else {
+				console.log(result);	
+				sig = str2buff(result);
+				var msg = crypto.createHash("sha256").update(plaintext).digest();
+				eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
+					console.log("Signature is OK");
+					res.send('success');
+				}).catch(function(err) {
+					console.log("Signature is BAD");
+					console.log(err);
+					res.send('failure')
+				});
+			}
 		});
+		
 
 	})
 	.catch(err=>{

@@ -1,6 +1,6 @@
 <div class="card card-body">
 	<h3>QR code</h3>
-	<form>
+	<form action="/ideas/verifySig" method="post">
 		<div class="form-group">
 			<label for="name">QR Code string</label>
 			<input type="text" name="qr" id = 'qr' class="form-control" >
@@ -8,60 +8,4 @@
 		<button type="button" id="qrsubmit" class="btn btn-primary">Submit</button>
 	</form>
 </div>
-
-<script>
-	var submit = document.getElementById('qrsubmit');
-	submit.addEventListener('click',function(event){
-		var qr = $("#qr")[0].value;
-		var arr = delimit(qr);
-		var id = arr[5];
-		console.log(id);
-		// console.log(arr);
-		// console.log(id);
-		kyc.viewSignature(id,(err,result)=>{
-	  	if(err)
-	  	{
-	  		console.log('err');
-	  		window.alert('unable to get signature');
-	  	}
-	  	else
-	  	{
-	  		console.log('result');
-	  		console.log(result);
-	  		$.post('/ideas/verifySig',{qr:qr,sign:result})
-	  		.then((data)=>{
-	  			if(data == 'success')
-	  			window.alert("signature verified");
-	  		})
-	  		.catch(err=>{
-	  			window.alert("signature verification failed");	
-	  			console.log(err);
-	  		});
-	  	}
-	  	});
-	})
-
-	function delimit(str)
-{
-	str=str+'&';
-	var word="";
-	var count=0;
-	var arr = [];
-	for(var i=0;i<str.length;i++)
-	{
-		c=str.charAt(i);
-		if(c!='&')
-		{
-			word+=c;
-		}
-		if(c=='&')
-		{
-			arr.push(word);
-			count++;
-			word="";
-		}
-	}
-	return arr;
-}
-</script>
 
