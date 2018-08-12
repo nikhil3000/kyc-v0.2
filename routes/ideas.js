@@ -7,7 +7,7 @@ var nodemailer = require('nodemailer');
 const Web3 = require('web3');
 
 const route = express.Router();
-const {ensureAuthenticated} = require('../helper/auth');
+const {ensureOfficial} = require('../helper/auth');
 
 var transporter1 = nodemailer.createTransport({
 	service:'gmail',
@@ -35,7 +35,7 @@ require('../models/otpstr');
 const Otp = mongoose.model('otp');
 
 //Add idea
-route.get('/add',ensureAuthenticated,(req,res) =>{
+route.get('/add',ensureOfficial,(req,res) =>{
 	res.render('ideas/add')
 });
 route.get('/qr',(req,res) =>{
@@ -44,7 +44,7 @@ route.get('/qr',(req,res) =>{
 
 
 //Edit Idea Form routed when edit button is clicked from list of ideas page
-route.get('/edit/:id',ensureAuthenticated,(req,res) =>{
+route.get('/edit/:id',ensureOfficial,(req,res) =>{
 	Idea.findOne({
 		_id:req.params.id
 	})
@@ -65,7 +65,7 @@ route.get('/edit/:id',ensureAuthenticated,(req,res) =>{
 });
 
 //to display the list of all ideas  
-route.get('/',ensureAuthenticated,(req,res)=>{
+route.get('/',ensureOfficial,(req,res)=>{
 	Idea.find({user:req.user.id})
 	.sort({date:'desc'})
 	.then(ideas =>{
@@ -75,7 +75,7 @@ route.get('/',ensureAuthenticated,(req,res)=>{
 	});
 });
 
-route.put('/:id',ensureAuthenticated,(req,res)=>{
+route.put('/:id',ensureOfficial,(req,res)=>{
 	Idea.findOne({
 		_id: req.params.id
 	})
@@ -91,7 +91,7 @@ route.put('/:id',ensureAuthenticated,(req,res)=>{
 	})
 });	
 
-route.delete('/:id',ensureAuthenticated,(req,res)=>{
+route.delete('/:id',ensureOfficial,(req,res)=>{
 	Idea.remove({
 		_id: req.params.id
 	})

@@ -82,7 +82,8 @@ route.post('/register',(req,res)=> {
 						user_id: newEid._id,
 						name: req.body.name,
 						email: req.body.email,
-						password: req.body.password
+						password: req.body.password,
+						role: req.body.accountType
 					});
 
 					bcrypt.genSalt(10,(err,salt)=>{
