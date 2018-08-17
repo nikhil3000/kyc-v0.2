@@ -114,7 +114,7 @@ route.get('/add',ensureOfficial,(req,res) =>{
 //Send Email  
 //send id of receiver + text to be sent
 route.post('/sendEmail',ensureOfficial,(req,res)=>{
-	user.findOne({id:req.body.id})
+	user.findOne({user_id:req.body.id})
 	.then(user=>{
 
 		var mailOptions ={

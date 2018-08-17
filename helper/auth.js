@@ -15,9 +15,20 @@ module.exports = {
 			return next();
 		}
 		else
-			req.flash('error_msg','Not Authorised');
+		req.flash('error_msg','Not Authorised');
 		res.redirect('/users/login');
-	}
+	},
+	ensureAuthenticated : function(req,res,next)
+	{
+		if(req.isAuthenticated())
+		{
+			return next();
+		}
+		else
+		req.flash('error_msg','Not Authorised');
+		res.redirect('/users/login');
+	} 
+
 
 
 }

@@ -2,9 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
-
 const route = express.Router();
-
+const {ensureAuthenticated} = require('../helper/auth.js');
 //Load db model
 require('../models/users');
 require('../models/emailtoid');
@@ -115,5 +114,53 @@ route.get('/logout',(req,res)=>{
 	req.logout();
 	req.flash('success_msg','You are logged out');
 	res.redirect('/users/login');
+})
+
+route.get('/updatePassword',ensureAuthenticated,(req,res)=>{
+	res.render('/users/updatePassword');
+})
+
+route.post('/updatePassword',ensureAuthenticated,(req,res)=>{
+	if(req.body.oldPassword != req.body.user.password)
+	{
+	req.flash('error_msg','Incorrect Password');
+	res.redirect('/users/updatePassword');
+	}
+	else if(req.body.newPassword != req.body.newPassword2 )
+	{
+	req.flash('error_msg','Passwords do not match');
+	res.redirect('/users/updatePassword');
+	}
+	else
+	{
+		const decipher = crypto.createDecipher('aes192',req.user.password);
+		let decryptedKey = decipher.update(req.user.pvtEncryptedKey,'hex','utf-8');
+		 decryptedKey += decipher.final('utf-8');
+		 const cipher = crypto.createCipher('aes192',req.body.newPassword);
+		 let encryptedPrivatekey = cipher.update(decryptedKey,'utf-8','hex');
+		 encryptedPrivatekey += cipher.final('hex');
+
+		 var newUser = {
+		 	password: req.body.newPassword,
+		 	pvtEncryptedKey:encryptedPrivatekey 
+		 };
+		 User.findOneandUpdate({
+		 	user_id:req.user.id
+		 },newUser,{upsert:true})
+		 .then(user=>{
+		 	console.log(user);
+		 });
+		 
+		 // User.findOne({
+		 // 	user_id:req.user.id
+		 // })
+		 // .then(user=>{
+		 // 	const newUser = {
+		 // 		user_id:req.user.id,
+		 // 		name: req.user.name,
+		 // 		email:req.user.email
+		 // 	}
+		 // })
+	}
 })
 module.exports = route;
