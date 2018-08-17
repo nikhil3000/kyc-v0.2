@@ -19,6 +19,9 @@ const UserSchema = new Schema({
 		type: String
 		// required: true
 	},
+	pvtkey:{
+		type: String
+	}
 	role:{
 		type:String,
 		required: true

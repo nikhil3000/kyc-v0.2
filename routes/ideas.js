@@ -5,6 +5,10 @@ const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
 var nodemailer = require('nodemailer');
 const Web3 = require('web3');
+var generatePassword = require('password-generator');
+const crypto = require('crypto');
+
+
 
 const route = express.Router();
 const {ensureOfficial} = require('../helper/auth');
@@ -33,6 +37,8 @@ require('../models/keys');
 const Keys = mongoose.model('sampleKeys');
 require('../models/otpstr');
 const Otp = mongoose.model('otp');
+require('../models/users');
+const cust =mongoose.model('users');
 
 route.get('/qr',(req,res) =>{
 	res.render('ideas/qr',{act:"/ideas/verifySig"});
@@ -135,6 +141,10 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 	{
 		errors.push({text:'Please enter a Name'});
 	}
+	if(!req.body.email)
+	{
+		errors.push({text:'Please enter an e-mail'});
+	}
 	if(!req.body.address)
 	{
 		errors.push({text:'Please enter an address'});
@@ -157,6 +167,7 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 		res.render('ideas/add',{
 			errors:errors,
 			name: req.body.name,
+			email: req.body.email,
 			address: req.body.address,
 			addressProof: req.body.addressProof,
 			identityProof: req.body.identityProof
@@ -167,25 +178,43 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 		//sign data
 		const data = req.body.name + '&' + req.body.address + '&' + req.body.addressProof + '&' + req.body.identityProof;
 		var msg = crypto.createHash("sha256").update(data).digest();
-		var buff = Buffer.from(req.body.key,'hex');
+		//var buff = Buffer.from(req.body.key,'hex');
 		var id = crypto.createHash("sha256").update(data+Date.now()).digest();
 		
 
 		//generate QR code using 
 		//encrypt data + public key of verifier + user id
-		pubKeyBuff = str2buff(req.body.pubKey);
+		//store user data
+		var pass = generatePassword();
+		const newCust={
+			user_id:id,
+			name:req.body.name,
+			email:req.body.email,
+			password: pass,
+			pvtkey: 
+			role:'cust'
+		};
+		new user(newCust)
+		.save()
+
+		//generate key pair for user encryption
+		var pvtKeyBuff = crypto.randomBytes(32);
+		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
+		var encrpytedKey =
+
+		//pubKeyBuff = str2buff(req.body.pubKey);
 		eccrypto.encrypt(pubKeyBuff,Buffer(data))
 		.then(function(encrypted){
 			
 			var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
-			var privateKeyBuff = str2buff(req.body.key);
-			var publicKey = eccrypto.getPublic(privateKeyBuff);
+			var privateKeyBuffsign = str2buff(req.body.key);
+			var publicKeysign = eccrypto.getPublic(privateKeyBuffsign);
 			var pubKeyStr = publicKey.toString('hex');
 			var idStr = id.toString('hex');
 			var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
 			console.log(QRdata);
-			QRCode.toDataURL(QRdata, function (err, url) {
-				eccrypto.sign(buff, msg).then(function(sig) {
+			QRCode.toDataURL(QRdata, function (err, url) { 
+				eccrypto.sign(privateKeyBuffsign, msg).then(function(sig) {
 					console.log("Signature in DER format:", sig.toString('hex'));
 					res.render('ideas/dispQR',{
 						url:url,
