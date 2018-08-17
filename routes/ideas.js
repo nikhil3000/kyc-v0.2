@@ -6,7 +6,6 @@ const QRCode = require('qrcode');
 var nodemailer = require('nodemailer');
 const Web3 = require('web3');
 var generatePassword = require('password-generator');
-const crypto = require('crypto');
 
 
 
@@ -38,7 +37,7 @@ const Keys = mongoose.model('sampleKeys');
 require('../models/otpstr');
 const Otp = mongoose.model('otp');
 require('../models/users');
-const cust =mongoose.model('users');
+const user =mongoose.model('users');
 
 route.get('/qr',(req,res) =>{
 	res.render('ideas/qr',{act:"/ideas/verifySig"});
@@ -184,32 +183,53 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 
 		//generate QR code using 
 		//encrypt data + public key of verifier + user id
-		//store user data
+
 		var pass = generatePassword();
+		
+
+		//generate key pair for user encryption
+		var pvtKeyBuff = crypto.randomBytes(32);
+		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
+		
+		//encrypting private key with password
+		const cipher = crypto.createCipher('aes192', pass);
+
+		let encrypted = cipher.update(pvtKeyBuff.toString('hex'), 'utf8', 'hex');
+		encrypted += cipher.final('hex');
+		console.log(encrypted);
+
+		var encryptedKey = encrypted;
+
+		//store user data
+
 		const newCust={
 			user_id:id,
 			name:req.body.name,
 			email:req.body.email,
 			password: pass,
-			pvtkey: 
+			pvtEncryptedKey: encryptedKey,
 			role:'cust'
 		};
 		new user(newCust)
 		.save()
-
-		//generate key pair for user encryption
-		var pvtKeyBuff = crypto.randomBytes(32);
-		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
-		var encrpytedKey =
 
 		//pubKeyBuff = str2buff(req.body.pubKey);
 		eccrypto.encrypt(pubKeyBuff,Buffer(data))
 		.then(function(encrypted){
 			
 			var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
-			var privateKeyBuffsign = str2buff(req.body.key);
+			//var privateKeyBuffsign = str2buff(req.body.key);
+			//decrypring private key to generate public key of sign
+			
+			user.findOne({user_id: req.body.user.id})
+			.then(user=>{
+				const decipher = crypto.createDecipher('aes192', user.password);
+				let decrypted = decipher.update(user.pvtEncryptedKey, 'hex', 'utf8');
+			decrypted += decipher.final('utf8');
+			console.log(decrypted);
+			var privateKeyBuffsign = Buffer.from(decrypted);
 			var publicKeysign = eccrypto.getPublic(privateKeyBuffsign);
-			var pubKeyStr = publicKey.toString('hex');
+			var pubKeyStr = publicKeysign.toString('hex');
 			var idStr = id.toString('hex');
 			var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
 			console.log(QRdata);
@@ -224,6 +244,14 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 					})
 				});				
 			})
+
+			
+			})
+			
+			// =;
+			
+			
+			
 		})
 		.catch(function(err){
 			console.log('encryption failed');
