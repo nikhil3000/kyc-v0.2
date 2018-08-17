@@ -58,6 +58,13 @@ route.post('/register',(req,res)=> {
 	}
 	else
 	{
+		var privateKeyBuff = crypto.randomBytes(32);
+		const crypto = require('crypto');
+		const cipher = crypto.createCipher('aes192', 'req.body.password');
+
+		let encrypted = cipher.update(privateKeyBuff.toString('hex'), 'utf8', 'hex');
+		encrypted += cipher.final('hex');
+		console.log(encrypted);
 		e_id.findOne({email:req.body.email})
 		.then(user => 
 		{
@@ -83,6 +90,7 @@ route.post('/register',(req,res)=> {
 						name: req.body.name,
 						email: req.body.email,
 						password: req.body.password,
+						pvtEncryptedKey: encrypted,						
 						role: req.body.accountType
 					});
 
