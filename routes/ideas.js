@@ -34,10 +34,6 @@ const Keys = mongoose.model('sampleKeys');
 require('../models/otpstr');
 const Otp = mongoose.model('otp');
 
-//Add idea
-route.get('/add',ensureOfficial,(req,res) =>{
-	res.render('ideas/add')
-});
 route.get('/qr',(req,res) =>{
 	res.render('ideas/qr',{act:"/ideas/verifySig"});
 });
@@ -104,23 +100,35 @@ route.delete('/:id',ensureOfficial,(req,res)=>{
 	});
 });
 
-route.get('/test',(req,res)=>{
-	var id = "87cbe143fbd4ede3c74d50c5b4c12b6e05f4f73f8d8120f30a7a8e0bb2dd4687";
-	kyc.viewSignature(id,(err,result)=>{
-		if(err)
-		{
-			console.log(err);
-			window.alert('unable to get signature');
-			res.send
-		}
-		else {
-			console.log(result);	
-		}
+//Add idea
+route.get('/add',ensureOfficial,(req,res) =>{
+	res.render('ideas/add')
+});
+
+//Send Email  
+//send id of receiver + text to be sent
+route.post('/sendEmail',ensureOfficial,(req,res)=>{
+	user.findOne({id:req.body.id})
+	.then(user=>{
+
+		var mailOptions ={
+			from: 'automated.nikhilyadav3000@gmail.com',
+			to: user.email,
+			subject : 'Sending email using nodejs',
+			text: req.body.text
+		};
+	})
+		
+	transporter.sendMail(mailOptions,function(err,info){
+			if(err)
+				console.log(err);
+			console.log(info);
+		});
 	});
-})
+
 
 // Process Form to add data to db when submit button is clicked in add idea page
-route.post('/sign',(req,res)=>{
+route.post('/sign',ensureOfficial,(req,res)=>{
 	let errors = [];
 
 	if(!req.body.name)
@@ -177,7 +185,6 @@ route.post('/sign',(req,res)=>{
 			var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
 			console.log(QRdata);
 			QRCode.toDataURL(QRdata, function (err, url) {
-				// res.send('<img src="' + url + '" 
 				eccrypto.sign(buff, msg).then(function(sig) {
 					console.log("Signature in DER format:", sig.toString('hex'));
 					res.render('ideas/dispQR',{
@@ -195,6 +202,9 @@ route.post('/sign',(req,res)=>{
 		})
 	}
 });
+
+
+
 
 //verify signature scanned from the qr code
 route.post('/verifySig',(req,res)=>{
@@ -268,53 +278,21 @@ route.post('/generateotp',(req,res)=>{
 		{
 			console.log(err);
 		}
-		else {
-
+		else 
+		{
 			var pkuserbuff=str2buff(result);
 			console.log('rand str');
 			console.log(randstr.toString());
-			eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted) {
-		// console.log("otp message encypted");
-		// console.log(encrypted);
-		// var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
-		// privateKeybuff = str2buff(privateKey);
-		// console.log(privateKeybuff);
-		// eccrypto.decrypt(privateKeybuff,encrypted)
-		// .then(plaintext=>{
-		// 	console.log('plaintext a  ');
-		// 	console.log(plaintext.toString());
-		// })
-		// .catch(err=>{
-		// 	console.log('err');
-		// 	console.log(err);
-		// })
-		var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
-		console.log('encpStr' + encpStr);
-		
-		var mailOptions ={
-			from: 'automated.nikhilyadav3000@gmail.com',
-			to: 'nikhilyadav3000@gmail.com',
-			subject : 'Sending email using nodejs',
-			text: encpStr
-		};
-
-		
-		transporter.sendMail(mailOptions,function(err,info){
-			if(err)
-				console.log(err);
-			console.log(info);
-		});
-
-	})
+			eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted){
+				var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
+				console.log('encpStr' + encpStr);
+				res.redirect('/ideas/sendEmail',{id:arr[5],text:encpStr});
+			})
 			.catch(err=>{
 				console.log(err);
 			})
-
 		}
 	});
-
-	
-	res.send('hello');
 });
 
 route.get('/decryptOtp',(req,res)=>
