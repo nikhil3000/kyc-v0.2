@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
+const crypto = require('crypto');
 const route = express.Router();
 const {ensureAuthenticated} = require('../helper/auth.js');
 //Load db model
@@ -58,7 +59,6 @@ route.post('/register',(req,res)=> {
 	else
 	{
 		var privateKeyBuff = crypto.randomBytes(32);
-		const crypto = require('crypto');
 		const cipher = crypto.createCipher('aes192', 'req.body.password');
 
 		let encrypted = cipher.update(privateKeyBuff.toString('hex'), 'utf8', 'hex');

@@ -21,7 +21,7 @@ const UserSchema = new Schema({
 	},
 	pvtEncryptedKey:{
 		type: String
-	}
+	},
 	role:{
 		type:String,
 		required: true

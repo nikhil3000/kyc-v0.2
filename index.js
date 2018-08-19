@@ -79,7 +79,8 @@ app.use('/web3',web3);
 //auth routes 
 app.use('/auth',users);
 
-const port = process.env.PORT || 5000;
-app.listen(port, () =>{
+ // var port = process.env.PORT || 5000;
+const port = 5000;
+app.listen(5000, () =>{
 	console.log(`server started at port ${port}`);
 })

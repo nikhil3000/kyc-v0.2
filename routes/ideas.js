@@ -156,10 +156,6 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 	{
 		errors.push({text:'Please enter an Identity proof'});
 	}
-	if(!req.body.key)
-	{
-		errors.push({text:'Please enter your key to sign the data'});
-	}
 
 	if(errors.length > 0)
 	{
@@ -179,14 +175,9 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 		var msg = crypto.createHash("sha256").update(data).digest();
 		//var buff = Buffer.from(req.body.key,'hex');
 		var id = crypto.createHash("sha256").update(data+Date.now()).digest();
-		
-
 		//generate QR code using 
 		//encrypt data + public key of verifier + user id
-
 		var pass = generatePassword();
-		
-
 		//generate key pair for user encryption
 		var pvtKeyBuff = crypto.randomBytes(32);
 		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
@@ -196,14 +187,15 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 
 		let encrypted = cipher.update(pvtKeyBuff.toString('hex'), 'utf8', 'hex');
 		encrypted += cipher.final('hex');
+		console.log('encrypted pvt key')
 		console.log(encrypted);
 
 		var encryptedKey = encrypted;
 
-		//store user data
+		//create user account
 
 		const newCust={
-			user_id:id,
+			user_id:id.toString('hex'),
 			name:req.body.name,
 			email:req.body.email,
 			password: pass,
@@ -211,7 +203,7 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 			role:'cust'
 		};
 		new user(newCust)
-		.save()
+		.save();
 
 		//pubKeyBuff = str2buff(req.body.pubKey);
 		eccrypto.encrypt(pubKeyBuff,Buffer(data))
@@ -221,10 +213,8 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 			//var privateKeyBuffsign = str2buff(req.body.key);
 			//decrypring private key to generate public key of sign
 			
-			user.findOne({user_id: req.body.user.id})
-			.then(user=>{
-				const decipher = crypto.createDecipher('aes192', user.password);
-				let decrypted = decipher.update(user.pvtEncryptedKey, 'hex', 'utf8');
+			const decipher = crypto.createDecipher('aes192', req.user.password);
+			let decrypted = decipher.update(req.user.pvtEncryptedKey, 'hex', 'utf8');
 			decrypted += decipher.final('utf8');
 			console.log(decrypted);
 			var privateKeyBuffsign = Buffer.from(decrypted);
@@ -235,7 +225,7 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 			console.log(QRdata);
 			QRCode.toDataURL(QRdata, function (err, url) { 
 				eccrypto.sign(privateKeyBuffsign, msg).then(function(sig) {
-					console.log("Signature in DER format:", sig.toString('hex'));
+					console.log("Signature in DER forsmat:", sig.toString('hex'));
 					res.render('ideas/dispQR',{
 						url:url,
 						id: idStr,
@@ -246,12 +236,7 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 			})
 
 			
-			})
-			
-			// =;
-			
-			
-			
+
 		})
 		.catch(function(err){
 			console.log('encryption failed');
