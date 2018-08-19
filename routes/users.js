@@ -126,16 +126,16 @@ route.get('/logout',(req,res)=>{
 })
 
 route.get('/updatePassword',ensureAuthenticated,(req,res)=>{
-	res.render('/users/updatePassword');
+	res.render('users/updatePassword');
 })
 
 route.post('/updatePassword',ensureAuthenticated,(req,res)=>{
-	if(req.body.oldPassword != req.body.user.password)
-	{
-	req.flash('error_msg','Incorrect Password');
-	res.redirect('/users/updatePassword');
-	}
-	else if(req.body.newPassword != req.body.newPassword2 )
+	// if(req.body.oldPassword != req.body.user.password)
+	// {
+	// req.flash('error_msg','Incorrect Password');
+	// res.redirect('/users/updatePassword');
+	// }
+	if(req.body.newPassword != req.body.newPassword2 )
 	{
 	req.flash('error_msg','Passwords do not match');
 	res.redirect('/users/updatePassword');
@@ -153,23 +153,38 @@ route.post('/updatePassword',ensureAuthenticated,(req,res)=>{
 		 	password: req.body.newPassword,
 		 	pvtEncryptedKey:encryptedPrivatekey 
 		 };
-		 User.findOneandUpdate({
-		 	user_id:req.user.id
-		 },newUser,{upsert:true})
-		 .then(user=>{
-		 	console.log(user);
-		 });
-		 
-		 // User.findOne({
+		 // User.findOneandUpdate({
 		 // 	user_id:req.user.id
-		 // })
+		 // },newUser,{upsert:true})
 		 // .then(user=>{
-		 // 	const newUser = {
-		 // 		user_id:req.user.id,
-		 // 		name: req.user.name,
-		 // 		email:req.user.email
-		 // 	}
-		 // })
+		 // 	console.log(user);
+		 // });
+		 
+		 User.findOne({
+		 	user_id:req.user.user_id
+		 })
+		 .then(user=>{
+		 		user.user_id=req.user.user_id;
+		 		user.name= req.user.name;
+		 		user.email=req.user.email;
+		 		user.password= ' ';
+				user.pvtEncryptedKey= encryptedPrivatekey;						
+				user.role= req.user.role;
+
+
+				bcrypt.genSalt(10,(err,salt)=>{
+					bcrypt.hash(req.body.newPassword,salt,(err,hash)=>{
+						if(err) throw err; 
+						user.password = hash;
+						user.save()
+						.then(user=>{
+						req.flash('success_msg','Password updated');
+						res.redirect('/ideas');
+						})		
+					});
+				});
+				
+		 })
 	}
 })
 module.exports = route;
