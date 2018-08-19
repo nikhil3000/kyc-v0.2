@@ -58,12 +58,7 @@ route.post('/register',(req,res)=> {
 	}
 	else
 	{
-		var privateKeyBuff = crypto.randomBytes(32);
-		const cipher = crypto.createCipher('aes192', 'req.body.password');
-
-		let encrypted = cipher.update(privateKeyBuff.toString('hex'), 'utf8', 'hex');
-		encrypted += cipher.final('hex');
-		console.log(encrypted);
+		
 		e_id.findOne({email:req.body.email})
 		.then(user => 
 		{
@@ -89,14 +84,20 @@ route.post('/register',(req,res)=> {
 						name: req.body.name,
 						email: req.body.email,
 						password: req.body.password,
-						pvtEncryptedKey: encrypted,						
+						pvtEncryptedKey: '' ,						
 						role: req.body.accountType
 					});
 
 					bcrypt.genSalt(10,(err,salt)=>{
 						bcrypt.hash(newUser.password,salt,(err,hash)=>{
-							if(err) throw err;
-							newUser.password = hash; 
+							if(err) throw err; 
+							var privateKeyBuff = crypto.randomBytes(32);
+							const cipher = crypto.createCipher('aes192', hash);
+							let encrypted = cipher.update(privateKeyBuff.toString('hex'), 'utf8', 'hex');
+							encrypted += cipher.final('hex');
+							console.log(encrypted);
+							newUser.password = hash;
+							newUser.pvtEncryptedKey = encrypted;
 							newUser.save()
 							.then(user => {
 								console.log(user);

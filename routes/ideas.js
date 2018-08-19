@@ -182,13 +182,11 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 		var pvtKeyBuff = crypto.randomBytes(32);
 		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
 		
-		//encrypting private key with password
+		//encrypting newly generated user's private key with password
 		const cipher = crypto.createCipher('aes192', pass);
 
-		let encrypted = cipher.update(pvtKeyBuff.toString('hex'), 'utf8', 'hex');
+		let encrypted = cipher.update(pvtKeyBuff.toString('hex'), 'hex', 'hex');
 		encrypted += cipher.final('hex');
-		console.log('encrypted pvt key')
-		console.log(encrypted);
 
 		var encryptedKey = encrypted;
 
@@ -214,10 +212,13 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 			//decrypring private key to generate public key of sign
 			
 			const decipher = crypto.createDecipher('aes192', req.user.password);
-			let decrypted = decipher.update(req.user.pvtEncryptedKey, 'hex', 'utf8');
-			decrypted += decipher.final('utf8');
+			let decrypted = decipher.update(req.user.pvtEncryptedKey, 'hex', 'utf-8');
+			decrypted += decipher.final('utf-8');
+			console.log('decrypted');
 			console.log(decrypted);
-			var privateKeyBuffsign = Buffer.from(decrypted);
+			var privateKeyBuffsign = Buffer.from(decrypted,'hex');
+			console.log(privateKeyBuffsign);
+
 			var publicKeysign = eccrypto.getPublic(privateKeyBuffsign);
 			var pubKeyStr = publicKeysign.toString('hex');
 			var idStr = id.toString('hex');
