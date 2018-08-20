@@ -5,6 +5,7 @@ const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
 var nodemailer = require('nodemailer');
 const Web3 = require('web3');
+const ImageDataURI = require('image-data-uri');
 var generatePassword = require('password-generator');
 var obpar = '';
 
@@ -114,29 +115,44 @@ function email(obpar)
 	user.findOne({user_id:obpar.id})
 	.then(user=>{
 
+		var res = obpar.text.replace(/#/g,'\n');
+		console.log(res);
 		var mailOptions ={
 			from: 'automated.nikhilyadav3000@gmail.com',
 			to: user.email,	
-			subject : 'Sending email using nodejs',
-			text: 'PFA your attached QR code',
-			attachments : [
-			{filename: 'QR.jpg',contents:obpar.text }]
+			subject : 'KYC Registration',
+			text: res
 		};
 
-		transporter.sendMail(mailOptions,function(err,info){
+		if(obpar.attachments)
+		{
+			
+			// obpar.attachments = JSON.toString(obpar.attachments);
+			// var imageURI = obpar.attachments;
+			// var image = ImageDataURI.decode(imageURI);
+			let dataURI = obpar.attachments;
+			let filePath = './qrCode1';
+			ImageDataURI.outputFile(dataURI, filePath)
+			.then(qrpath=>{
+			console.log(qrpath);
+			var img = require("fs").readFileSync(qrpath);
+			// mailOptions.attachments = [{filename:'qrCode1',contents:img}];
+			mailOptions.attachments = [{path:qrpath}];
+			transporter.sendMail(mailOptions,function(err,info){
 			if(err)
 				console.log(err);
 			console.log(info);
-		});
+			});
+
+			})
+		}
 	})
 }
 //Send Email  
 //send id of receiver + text to be sent
 route.post('/sendEmail',(req,res)=>{
-
-	console.log('send mail');
-
 	email(req.body);
+	res.send('success');
 		
 	});
 
@@ -239,11 +255,14 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 				.then(function(sig) 
 				{
 					console.log("Signature in DER forsmat:", sig.toString('hex'));
+					var mailText = 'Your details have been verified. Please use these credentials to login to your account # User Id: '+idStr+'# Password: '+pass+'##Please change your password ASAP. ## PFA your QR code';
+					// mailText = "hello";
 					res.render('ideas/dispQR',{
 						url:url,
 						id: idStr,
 						signature: sig.toString('hex'),
-						pkUser: pubKeyBuff.toString('hex')
+						pkUser: pubKeyBuff.toString('hex'),
+						text: mailText
 					})
 				});				
 			})
@@ -348,6 +367,7 @@ route.post('/generateotp',(req,res)=>{
 				obpar ={id:arr[5],text:encpStr};
 				//res.redirect('/ideas/sendEmail');
 				email(obpar);
+				res.send('end');
 			})
 			.catch(err=>{
 				console.log(err);

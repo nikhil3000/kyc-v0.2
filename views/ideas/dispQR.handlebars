@@ -17,7 +17,8 @@ function transac()
 				{
 					console.log(result);
 					window.alert('Data successfully pushed to blockchain');
-					$.post('/ideas/sendEmail',{id:'{{id}}',text:'<img src="{{url}}" style="width:200px;height:200px;">'},function(){console.log('send')});
+					// var text = "{{text}}";
+					$.post('/ideas/sendEmail',{id:'{{id}}',text:"{{text}}",attachments:"{{url}}"},function(){console.log('send')});
 				}
 				else
 				{
