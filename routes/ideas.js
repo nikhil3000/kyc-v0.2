@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 var nodemailer = require('nodemailer');
 const Web3 = require('web3');
 var generatePassword = require('password-generator');
-
+var obpar = '';
 
 
 const route = express.Router();
@@ -14,7 +14,6 @@ const {ensureOfficial} = require('../helper/auth');
 
 var transporter1 = nodemailer.createTransport({
 	service:'gmail',
-
 	auth:
 	{
 		user:'automated.nikhilyadav3000@gmail.com',
@@ -112,29 +111,39 @@ route.get('/add',ensureOfficial,(req,res) =>{
 
 //Send Email  
 //send id of receiver + text to be sent
-route.post('/sendEmail',ensureOfficial,(req,res)=>{
-	user.findOne({user_id:req.body.id})
+route.post('/sendEmail',(req,res)=>{
+	console.log('send mail');
+	if(obpar == '')
+	{
+		obpar = req.body;
+	}
+
+	user.findOne({user_id:obpar.id})
 	.then(user=>{
 
 		var mailOptions ={
 			from: 'automated.nikhilyadav3000@gmail.com',
 			to: user.email,
 			subject : 'Sending email using nodejs',
-			text: req.body.text
+			text: 'PFA your attached QR code',
+			attachments : [
+			{filename: 'QR.jpg',contents:obpar.text }]
 		};
-	})
-		
-	transporter.sendMail(mailOptions,function(err,info){
+
+		transporter.sendMail(mailOptions,function(err,info){
 			if(err)
 				console.log(err);
 			console.log(info);
 		});
+	})
+		
 	});
 
 
 // Process Form to add data to db when submit button is clicked in add idea page
 route.post('/sign',ensureOfficial,(req,res)=>{
 	let errors = [];
+	console.log('sign');
 
 	if(!req.body.name)
 	{
@@ -225,13 +234,15 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 			var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
 			console.log(QRdata);
 			QRCode.toDataURL(QRdata, function (err, url) { 
-				eccrypto.sign(privateKeyBuffsign, msg).then(function(sig) {
+				eccrypto.sign(privateKeyBuffsign, msg)
+				.then(function(sig) 
+				{
 					console.log("Signature in DER forsmat:", sig.toString('hex'));
 					res.render('ideas/dispQR',{
 						url:url,
 						id: idStr,
 						signature: sig.toString('hex'),
-						pkUser: req.body.pubKey
+						pkUser: pubKeyBuff.toString('hex')`
 					})
 				});				
 			})

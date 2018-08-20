@@ -3,12 +3,36 @@
 	<img src="{{url}}" style="width:200px;height:200px;">
 </div>
 
+<div class="btn btn-primary" onclick="transac">Try Again</div>
+
 <script>
-	kyc.addCustomer("{{id}}","{{signature}}","{{pkUser}}",(err,result)=>{
- 		if(!err)
- 		{
- 			console.log(result);
- 			window.alert('Data successfully pushed to blockchain');
- 		}
- 	});
+function transac()
+{
+	console.log('transac called');
+	web3.version.getNetwork((err, netId) => {
+		if(netId==4)
+		{
+			kyc.addCustomer("{{id}}","{{signature}}","{{pkUser}}",(err,result)=>{
+				if(!err)
+				{
+					console.log(result);
+					window.alert('Data successfully pushed to blockchain');
+					$.post('/ideas/sendEmail',{id:'{{id}}',text:'<img src="{{url}}" style="width:200px;height:200px;">'},function(){console.log('send')});
+				}
+				else
+				{
+					console.log(err);
+					window.alert('Some Error occured. Please check logs');
+				}
+			});		
+		}
+		else
+		{
+			window.alert('Please switch to rinkeby nad try again')
+		}
+	})
+}
+
+	transac();
+
 </script>
