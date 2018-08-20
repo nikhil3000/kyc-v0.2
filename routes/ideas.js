@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 var nodemailer = require('nodemailer');
 const Web3 = require('web3');
 var generatePassword = require('password-generator');
-
+var obpar = '';
 
 
 const route = express.Router();
@@ -112,13 +112,14 @@ route.get('/add',ensureOfficial,(req,res) =>{
 
 //Send Email  
 //send id of receiver + text to be sent
-route.post('/sendEmail',ensureOfficial,(req,res)=>{
+route.post('/sendEmail',(req,res)=>{
+	console.log('abc');
 	user.findOne({user_id:req.body.id})
 	.then(user=>{
 
 		var mailOptions ={
 			from: 'automated.nikhilyadav3000@gmail.com',
-			to: user.email,
+			to: user.email,	
 			subject : 'Sending email using nodejs',
 			text: req.body.text
 		};
@@ -231,7 +232,7 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 						url:url,
 						id: idStr,
 						signature: sig.toString('hex'),
-						pkUser: req.body.pubKey
+						pkUser: pubKeyBuff.toString('hex')
 					})
 				});				
 			})
@@ -298,6 +299,7 @@ route.post('/verifySig',(req,res)=>{
 
 //get qr from form as string and seperate data values
 route.post('/generateotp',(req,res)=>{
+	console.log('generateotp');
 	var arr = delimit(req.body.qr);
 	var otpstr= {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
 	var randstr=crypto.randomBytes(4);
@@ -309,10 +311,10 @@ route.post('/generateotp',(req,res)=>{
 	new Otp(newOtp)
 	.save()
 	.then(otp => {
-			// console.log('random otp string saved with user id in db');
+			console.log('random otp string saved with user id in db');
 		})
 	.catch(err=>{
-			// console.log(err);
+			console.log(err);
 		})
 	//pkuser will be available from blockchain
 	// var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
@@ -323,13 +325,17 @@ route.post('/generateotp',(req,res)=>{
 		}
 		else 
 		{
+			console.log('result');
+			console.log(result);
+			
 			var pkuserbuff=str2buff(result);
 			console.log('rand str');
 			console.log(randstr.toString());
 			eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted){
 				var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
 				console.log('encpStr' + encpStr);
-				res.redirect('/ideas/sendEmail',{id:arr[5],text:encpStr});
+				obpar ={id:arr[5],text:encpStr};
+				res.redirect('/ideas/sendEmail');
 			})
 			.catch(err=>{
 				console.log(err);
@@ -337,7 +343,6 @@ route.post('/generateotp',(req,res)=>{
 		}
 	});
 });
-
 route.get('/decryptOtp',(req,res)=>
 {
 	res.render('ideas/decrypt');
