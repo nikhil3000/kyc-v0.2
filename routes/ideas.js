@@ -109,16 +109,8 @@ route.get('/add',ensureOfficial,(req,res) =>{
 	res.render('ideas/add')
 });
 
-//Send Email  
-//send id of receiver + text to be sent
-route.post('/sendEmail',(req,res)=>{
-
-	console.log('send mail');
-	if(obpar == '')
-	{
-		obpar = req.body;
-	}
-
+function email(obpar)
+{
 	user.findOne({user_id:obpar.id})
 	.then(user=>{
 
@@ -137,6 +129,14 @@ route.post('/sendEmail',(req,res)=>{
 			console.log(info);
 		});
 	})
+}
+//Send Email  
+//send id of receiver + text to be sent
+route.post('/sendEmail',(req,res)=>{
+
+	console.log('send mail');
+
+	email(req.body);
 		
 	});
 
@@ -346,7 +346,8 @@ route.post('/generateotp',(req,res)=>{
 				var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
 				console.log('encpStr' + encpStr);
 				obpar ={id:arr[5],text:encpStr};
-				res.redirect('/ideas/sendEmail');
+				//res.redirect('/ideas/sendEmail');
+				email(obpar);
 			})
 			.catch(err=>{
 				console.log(err);
