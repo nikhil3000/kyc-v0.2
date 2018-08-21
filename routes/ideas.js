@@ -3,15 +3,17 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
-var nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer');
 const Web3 = require('web3');
+const bcrypt = require('bcryptjs');
+
 const ImageDataURI = require('image-data-uri');
 var generatePassword = require('password-generator');
 var obpar = '';
 
 
 const route = express.Router();
-const {ensureOfficial} = require('../helper/auth');
+const {ensureOfficial,ensureAuthenticated} = require('../helper/auth');
 
 var transporter1 = nodemailer.createTransport({
 	service:'gmail',
@@ -38,11 +40,8 @@ require('../models/otpstr');
 const Otp = mongoose.model('otp');
 require('../models/users');
 const user =mongoose.model('users');
-
-route.get('/qr',(req,res) =>{
-	res.render('ideas/qr',{act:"/ideas/verifySig"});
-});
-
+require('../models/kycverified');
+const kycVerified = mongoose.model('KycVerified');
 
 //Edit Idea Form routed when edit button is clicked from list of ideas page
 route.get('/edit/:id',ensureOfficial,(req,res) =>{
@@ -110,44 +109,6 @@ route.get('/add',ensureOfficial,(req,res) =>{
 	res.render('ideas/add')
 });
 
-function email(obpar)
-{
-	user.findOne({user_id:obpar.id})
-	.then(user=>{
-
-		var res = obpar.text.replace(/#/g,'\n');
-		console.log(res);
-		var mailOptions ={
-			from: 'automated.nikhilyadav3000@gmail.com',
-			to: user.email,	
-			subject : 'KYC Registration',
-			text: res
-		};
-
-		if(obpar.attachments)
-		{
-			
-			// obpar.attachments = JSON.toString(obpar.attachments);
-			// var imageURI = obpar.attachments;
-			// var image = ImageDataURI.decode(imageURI);
-			let dataURI = obpar.attachments;
-			let filePath = './qrCode1';
-			ImageDataURI.outputFile(dataURI, filePath)
-			.then(qrpath=>{
-			console.log(qrpath);
-			var img = require("fs").readFileSync(qrpath);
-			// mailOptions.attachments = [{filename:'qrCode1',contents:img}];
-			mailOptions.attachments = [{path:qrpath}];
-			transporter.sendMail(mailOptions,function(err,info){
-			if(err)
-				console.log(err);
-			console.log(info);
-			});
-
-			})
-		}
-	})
-}
 //Send Email  
 //send id of receiver + text to be sent
 route.post('/sendEmail',(req,res)=>{
@@ -207,29 +168,37 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 		//generate key pair for user encryption
 		var pvtKeyBuff = crypto.randomBytes(32);
 		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
-		
-		//encrypting newly generated user's private key with password
-		const cipher = crypto.createCipher('aes192', pass);
-
-		let encrypted = cipher.update(pvtKeyBuff.toString('hex'), 'hex', 'hex');
-		encrypted += cipher.final('hex');
-
-		var encryptedKey = encrypted;
-
 		//create user account
 
 		const newCust={
 			user_id:id.toString('hex'),
 			name:req.body.name,
 			email:req.body.email,
-			password: pass,
-			pvtEncryptedKey: encryptedKey,
 			role:'cust'
 		};
-		new user(newCust)
-		.save();
 
-		//pubKeyBuff = str2buff(req.body.pubKey);
+		bcrypt.genSalt(10,(err,salt)=>{
+			bcrypt.hash(pass,salt,(err,hashedPassword)=>{
+				if(err) throw err; 
+				//encrypting newly generated user's private key with password
+				const cipher = crypto.createCipher('aes192', hashedPassword);
+				let encryptedKey = cipher.update(pvtKeyBuff.toString('hex'), 'hex', 'hex');
+				encryptedKey += cipher.final('hex');
+								
+				newCust.password = hashedPassword;
+				newCust.pvtEncryptedKey = encryptedKey;
+				new user(newCust)
+				.save()
+				.then(user => {
+					console.log(user);
+				})
+				.catch(err=> {
+					console.log(err);
+					return;
+				})
+			});
+		});
+
 		eccrypto.encrypt(pubKeyBuff,Buffer(data))
 		.then(function(encrypted){
 			
@@ -276,8 +245,6 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 		})
 	}
 });
-
-
 
 
 //verify signature scanned from the qr code
@@ -327,6 +294,11 @@ route.post('/verifySig',(req,res)=>{
 	
 });
 
+
+
+route.get('/qr',(req,res) =>{
+	res.render('ideas/qr');
+});
 //get qr from form as string and seperate data values
 route.post('/generateotp',(req,res)=>{
 	console.log('generateotp');
@@ -362,10 +334,11 @@ route.post('/generateotp',(req,res)=>{
 			console.log('rand str');
 			console.log(randstr.toString());
 			eccrypto.encrypt(pkuserbuff, randstr).then(function(encrypted){
+				console.log('encrypted otp');
+				console.log(encrypted);
 				var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
 				console.log('encpStr' + encpStr);
 				obpar ={id:arr[5],text:encpStr};
-				//res.redirect('/ideas/sendEmail');
 				email(obpar);
 				res.send('end');
 			})
@@ -380,17 +353,78 @@ route.get('/decryptOtp',(req,res)=>
 	res.render('ideas/decrypt');
 })
 
-route.post('/decryptOtp',(req,res)=>{
-	var key = req.body.key;
+route.post('/decryptOtp',ensureAuthenticated,(req,res)=>{
 	var arr = delimit(req.body.encpData);
 	var encpOTP = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
-	key1 = str2buff(key);
-	console.log(key1);
+	// key1 = str2buff(key);
+	// console.log(key1);
 	console.log(encpOTP);
-	eccrypto.decrypt(key1,encpOTP).then(plaintext=>{
-		console.log('plain text');
-		console.log(plaintext.toString());
-		res.render('ideas/otp',{otp:plaintext.toString()});
+	//decipher private key using password
+
+	const decipher = crypto.createDecipher('aes192',req.user.password);
+	let decryptedKey = decipher.update(req.user.pvtEncryptedKey,'hex','utf-8');
+	decryptedKey += decipher.final('utf-8');
+	var privateKeyBuffuser = Buffer.from(decryptedKey,'hex');
+
+	eccrypto.decrypt(privateKeyBuffuser,encpOTP).then(decryptedOTP=>{
+		console.log(decryptedOTP.toString());
+
+		var arr = delimit(req.body.qr);
+		var userData = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
+		var pubKeyVerifier = str2buff(arr[4]);
+		var userid = arr[5];
+		eccrypto.decrypt(privateKeyBuffuser,userData).then(decryptedData=>{
+			// res.render('ideas/otp',{otp:decryptedOTP.toString()});
+			Otp.findOne({id:userid})
+			.then(otpObj=>{
+				console.log(otp);
+				if(otpObj.otp == decryptedOTP)
+				{
+					// res.send('otp verified');
+					Otp.remove({id:userid});
+
+					kyc.viewSignature(userid,(err,result)=>{
+						if(err)
+						{
+							console.log(err);
+							window.alert('unable to get signature');
+							res.send
+						}
+						else {
+							console.log(result);	
+							sig = str2buff(result);
+							var msg = crypto.createHash("sha256").update(decryptedData).digest();
+							eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
+								console.log("Signature is OK");
+
+								var data = delimit(decryptedData);
+
+								var verifiedObj = new KycVerified(
+								{
+									user_id:userid,
+									name:data[0],
+									address:data[1],
+									idProof:data[3],
+									addressProof:data[2]
+								});
+								verifiedObj.save();
+								res.send('signature verified successfully. KYC done. Thank you');
+							}).catch(function(err) {
+								console.log("Signature is BAD");
+								console.log(err);
+								res.send('failure')
+							});
+						}
+					});
+				}
+				else
+				{
+					req.flash('error_msg','Incorrect OTP');
+					res.redirect('/ideas/decryptOtp');
+				}
+			})	
+		})
+		
 	}).catch(err=>{
 		console.log(err);
 	});
@@ -449,6 +483,54 @@ function str2buff(str)
 		// console.log(pubKeyBuff);
 		return pubKeyBuff;	
 	}
+
+function email(obpar)
+{
+	console.log('sendEmail');
+	user.findOne({user_id:obpar.id})
+	.then(user=>{
+
+		var res = obpar.text.replace(/#/g,'\n');
+		console.log(res);
+		var mailOptions ={
+			from: 'automated.nikhilyadav3000@gmail.com',
+			to: user.email,	
+			subject : 'KYC Registration',
+			text: res
+		};
+
+		if(obpar.attachments)
+		{
+			
+			// obpar.attachments = JSON.toString(obpar.attachments);
+			// var imageURI = obpar.attachments;
+			// var image = ImageDataURI.decode(imageURI);
+			let dataURI = obpar.attachments;
+			let filePath = './qrCode1';
+			ImageDataURI.outputFile(dataURI, filePath)
+			.then(qrpath=>{
+			console.log(qrpath);
+			var img = require("fs").readFileSync(qrpath);
+			// mailOptions.attachments = [{filename:'qrCode1',contents:img}];
+			mailOptions.attachments = [{path:qrpath}];
+			transporter.sendMail(mailOptions,function(err,info){
+			if(err)
+				console.log(err);
+			console.log(info);
+			});
+
+			})
+		}
+		else
+		{
+			transporter.sendMail(mailOptions,function(err,info){
+			if(err)
+				console.log(err);
+			console.log(info);
+			});			
+		}
+	})
+}
 
 	function delimit(str)
 	{

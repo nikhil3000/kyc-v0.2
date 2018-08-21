@@ -11,18 +11,12 @@ const e_id = mongoose.model('emailtoid');
 module.exports = function(passport)
 {
 	passport.use(new LocalStrategy({usernameField:'email'},(email,password,done)=>{
-		e_id.findOne({
-			email:email
-		}).then(eid => {
-			if(!eid){
-				return done(null,false, {message:'No user found'});
-			}
-			else
-			{
-				User.findOne({
-					user_id: eid._id 
+		
+			User.findOne({
+					email:email 
 				})
 				.then(user=>{
+					console.log(user);
 					//Match Password
 					bcrypt.compare(password,user.password,(err,isMatch)=>{
 						if(err) throw err;
@@ -35,10 +29,8 @@ module.exports = function(passport)
 						}
 					})			
 				})
-			}
-
 			
-		})
+	
 	}));
 
 	passport.use(
