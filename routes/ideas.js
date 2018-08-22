@@ -224,8 +224,7 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 				.then(function(sig) 
 				{
 					console.log("Signature in DER forsmat:", sig.toString('hex'));
-					var mailText = 'Your details have been verified. Please use these credentials to login to your account # User Id: '+idStr+'# Password: '+pass+'##Please change your password ASAP. ## PFA your QR code';
-					// mailText = "hello";
+					var mailText = 'Your details have been verified. Please use these credentials to login to your account # User Id: '+ req.body.email +'# Password: '+pass+'##Please change your password ASAP. ## PFA your QR code ## Private key in plain text : '+ pvtKeyBuff.toString('hex');
 					res.render('ideas/dispQR',{
 						url:url,
 						id: idStr,
@@ -248,51 +247,52 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 
 
 //verify signature scanned from the qr code
-route.post('/verifySig',(req,res)=>{
+// route.post('/verifySig',(req,res)=>{
 	
-	var arr = delimit(req.body.qr);
-	var userData = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
-	var pubKeyVerifier = str2buff(arr[4]);
-	var userid = arr[5];
+// 	var arr = delimit(req.body.qr);
+// 	var userData = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
+// 	var pubKeyVerifier = str2buff(arr[4]);
+// 	var userid = arr[5];
 
-	//temporary arrangement otherewise decrypted should be sent to this route
-	var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
-	privateKeybuff = str2buff(privateKey);
-	eccrypto.decrypt(privateKeybuff,userData)
-	.then(plaintext=>{
-		console.log('plaintext a  ');
-		console.log(plaintext.toString());
-		kyc.viewSignature(userid,(err,result)=>{
-			if(err)
-			{
-				console.log(err);
-				window.alert('unable to get signature');
-				res.send
-			}
-			else {
-				console.log(result);	
-				sig = str2buff(result);
-				var msg = crypto.createHash("sha256").update(plaintext).digest();
-				eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
-					console.log("Signature is OK");
-					res.send('success');
-				}).catch(function(err) {
-					console.log("Signature is BAD");
-					console.log(err);
-					res.send('failure')
-				});
-			}
-		});
+// 	//temporary arrangement otherewise decrypted should be sent to this route
+// 	var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
+// 	privateKeybuff = str2buff(privateKey);
+// 	eccrypto.decrypt(privateKeybuff,userData)
+// 	.then(plaintext=>{
+// 		console.log('plaintext a  ');
+// 		console.log(plaintext.toString());
+// 		kyc.viewSignature(userid,(err,result)=>{
+// 			if(err)
+// 			{
+// 				console.log(err);
+// 				window.alert('unable to get signature');
+// 				res.send
+// 			}
+// 			else 
+// 			{
+// 				console.log(result);	
+// 				sig = str2buff(result);
+// 				var msg = crypto.createHash("sha256").update(plaintext).digest();
+// 				eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
+// 					console.log("Signature is OK");
+// 					res.send('success');
+// 				}).catch(function(err) {
+// 					console.log("Signature is BAD");
+// 					console.log(err);
+// 					res.send('failure')
+// 				});
+// 			}
+// 		});
 		
 
-	})
-	.catch(err=>{
-		console.log('err');
-		console.log(err);
-	})
+// 	})
+// 	.catch(err=>{
+// 		console.log('err');
+// 		console.log(err);
+// 	})
 
 	
-});
+// });
 
 
 
@@ -358,14 +358,22 @@ route.post('/decryptOtp',ensureAuthenticated,(req,res)=>{
 	var encpOTP = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
 	// key1 = str2buff(key);
 	// console.log(key1);
-	console.log(encpOTP);
 	//decipher private key using password
 
 	const decipher = crypto.createDecipher('aes192',req.user.password);
-	let decryptedKey = decipher.update(req.user.pvtEncryptedKey,'hex','utf-8');
-	decryptedKey += decipher.final('utf-8');
-	var privateKeyBuffuser = Buffer.from(decryptedKey,'hex');
+	let decryptedKey = decipher.update(req.user.pvtEncryptedKey,'hex','hex');
+	decryptedKey += decipher.final('hex');
+	console.log('decryptedKey');
+	console.log(decryptedKey);
 
+	var privateKeyBuffuser = Buffer.from(decryptedKey,'hex');
+	
+	console.log('private key');
+	console.log(privateKeyBuffuser.toString('hex'));
+	console.log('otp');
+	console.log(encpOTP);
+
+	
 	eccrypto.decrypt(privateKeyBuffuser,encpOTP).then(decryptedOTP=>{
 		console.log(decryptedOTP.toString());
 
@@ -377,7 +385,6 @@ route.post('/decryptOtp',ensureAuthenticated,(req,res)=>{
 			// res.render('ideas/otp',{otp:decryptedOTP.toString()});
 			Otp.findOne({id:userid})
 			.then(otpObj=>{
-				console.log(otp);
 				if(otpObj.otp == decryptedOTP)
 				{
 					// res.send('otp verified');
@@ -399,7 +406,7 @@ route.post('/decryptOtp',ensureAuthenticated,(req,res)=>{
 
 								var data = delimit(decryptedData);
 
-								var verifiedObj = new KycVerified(
+								var verifiedObj = new kycVerified(
 								{
 									user_id:userid,
 									name:data[0],
