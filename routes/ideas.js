@@ -6,6 +6,7 @@ const QRCode = require('qrcode');
 const nodemailer = require('nodemailer');
 const Web3 = require('web3');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
 
 const ImageDataURI = require('image-data-uri');
 var generatePassword = require('password-generator');
@@ -245,57 +246,6 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 	}
 });
 
-
-//verify signature scanned from the qr code
-// route.post('/verifySig',(req,res)=>{
-	
-// 	var arr = delimit(req.body.qr);
-// 	var userData = {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};
-// 	var pubKeyVerifier = str2buff(arr[4]);
-// 	var userid = arr[5];
-
-// 	//temporary arrangement otherewise decrypted should be sent to this route
-// 	var privateKey = "887737500f32bdba42e2567999c2d29fe328340714d5f15dbacc204c8d95d522";
-// 	privateKeybuff = str2buff(privateKey);
-// 	eccrypto.decrypt(privateKeybuff,userData)
-// 	.then(plaintext=>{
-// 		console.log('plaintext a  ');
-// 		console.log(plaintext.toString());
-// 		kyc.viewSignature(userid,(err,result)=>{
-// 			if(err)
-// 			{
-// 				console.log(err);
-// 				window.alert('unable to get signature');
-// 				res.send
-// 			}
-// 			else 
-// 			{
-// 				console.log(result);	
-// 				sig = str2buff(result);
-// 				var msg = crypto.createHash("sha256").update(plaintext).digest();
-// 				eccrypto.verify(pubKeyVerifier,msg,sig).then(function() {
-// 					console.log("Signature is OK");
-// 					res.send('success');
-// 				}).catch(function(err) {
-// 					console.log("Signature is BAD");
-// 					console.log(err);
-// 					res.send('failure')
-// 				});
-// 			}
-// 		});
-		
-
-// 	})
-// 	.catch(err=>{
-// 		console.log('err');
-// 		console.log(err);
-// 	})
-
-	
-// });
-
-
-
 route.get('/qr',(req,res) =>{
 	res.render('ideas/qr');
 });
@@ -348,7 +298,7 @@ route.post('/generateotp',(req,res)=>{
 		}
 	});
 });
-route.get('/decryptOtp',(req,res)=>
+route.get('/decryptOtp',ensureAuthenticated,(req,res)=>
 {
 	res.render('ideas/decrypt');
 })
@@ -517,13 +467,21 @@ function email(obpar)
 			ImageDataURI.outputFile(dataURI, filePath)
 			.then(qrpath=>{
 			console.log(qrpath);
-			var img = require("fs").readFileSync(qrpath);
+			var img = fs.readFileSync(qrpath);
 			// mailOptions.attachments = [{filename:'qrCode1',contents:img}];
 			mailOptions.attachments = [{path:qrpath}];
-			transporter.sendMail(mailOptions,function(err,info){
-			if(err)
-				console.log(err);
-			console.log(info);
+			transporter.sendMail(mailOptions,function(err,info)
+			{
+				if(err)
+					console.log(err);
+				else
+				{
+					console.log(info);
+					fs.unlink(qrpath,err=>{
+						if(err)
+							throw err;
+					});
+				}
 			});
 
 			})

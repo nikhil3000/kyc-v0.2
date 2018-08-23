@@ -20,13 +20,20 @@ route.get('/register',(req,res)=>{
 });
 //Login from POST
 route.post('/login',(req,res,next)=>{
+	
 	passport.authenticate('local',{
-		successRedirect: '/ideas',
+		successRedirect: '/users/redirect',
 		failureRedirect: '/users/login',
 		failureFlash: true
 	})(req,res,next);
 });
 
+route.get('/redirect',ensureAuthenticated,(req,res)=>{
+	if(req.user.role == 'cust')
+		res.redirect('/ideas/decryptOtp');
+	else
+		res.redirect('/ideas/add')
+})
 route.get('/google',passport.authenticate('google',{scope: ['profile','email']}));
 
 route.get('/google/callback', 
