@@ -112,7 +112,7 @@ route.get('/add',ensureOfficial,(req,res) =>{
 
 //Send Email  
 //send id of receiver + text to be sent
-route.post('/sendEmail',(req,res)=>{
+route.post('/sendEmail',ensureOfficial,(req,res)=>{
 	email(req.body);
 	res.send('success');
 		
@@ -246,11 +246,11 @@ route.post('/sign',ensureOfficial,(req,res)=>{
 	}
 });
 
-route.get('/qr',(req,res) =>{
+route.get('/qr',ensureOfficial,(req,res) =>{
 	res.render('ideas/qr');
 });
 //get qr from form as string and seperate data values
-route.post('/generateotp',(req,res)=>{
+route.post('/generateotp',ensureOfficial,(req,res)=>{
 	console.log('generateotp');
 	var arr = delimit(req.body.qr);
 	var otpstr= {iv: str2buff(arr[0]), ephemPublicKey:str2buff(arr[1]), ciphertext:str2buff(arr[2]), mac:str2buff(arr[3])};

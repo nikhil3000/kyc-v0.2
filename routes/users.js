@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const passport = require('passport');
 const crypto = require('crypto');
 const route = express.Router();
-const {ensureAuthenticated} = require('../helper/auth.js');
+const {ensureAuthenticated,ensureOfficial} = require('../helper/auth.js');
 //Load db model
 require('../models/users');
 require('../models/emailtoid');
@@ -44,7 +44,7 @@ route.get('/google/callback',
 });
 
 //Register from post
-route.post('/register',(req,res)=> {
+route.post('/register',ensureOfficial,(req,res)=> {
 	let errors = [];
 	
 	if(req.body.password != req.body.password2)
