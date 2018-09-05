@@ -9,9 +9,9 @@ module.exports = {
 		res.redirect('/users/login');
 	},
 
-	ensureCust : function(req,res,next)
+	ensureAdmin : function(req,res,next)
 	{
-		if(req.isAuthenticated() && req.user.role == 'cust'){			
+		if(req.isAuthenticated() && req.user.role == 'admin'){			
 			return next();
 		}
 		else

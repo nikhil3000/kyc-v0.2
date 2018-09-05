@@ -4,18 +4,18 @@ const bcrypt = require('bcryptjs');
 const passport = require('passport');
 const crypto = require('crypto');
 const route = express.Router();
-const {ensureAuthenticated,ensureOfficial} = require('../helper/auth.js');
+const {ensureAuthenticated,ensureOfficial,ensureAdmin} = require('../helper/auth.js');
 //Load db model
+// require('../models/emailtoid');
 require('../models/users');
-require('../models/emailtoid');
 const User = mongoose.model('users');
-const e_id = mongoose.model('emailtoid');
+// const e_id = mongoose.model('emailtoid');
 //User Login Route
 route.get('/login',(req,res)=>{
 	res.render('users/login');
 });
 //User Register Route
-route.get('/register',(req,res)=>{
+route.get('/register',ensureAdmin,(req,res)=>{
 	res.render('users/register');
 });
 //Login from POST
@@ -31,20 +31,14 @@ route.post('/login',(req,res,next)=>{
 route.get('/redirect',ensureAuthenticated,(req,res)=>{
 	if(req.user.role == 'cust')
 		res.redirect('/ideas/decryptOtp');
+	else if(req.user.role == 'official')
+		res.redirect('/ideas/add');
 	else
-		res.redirect('/ideas/add')
+		res.redirect('/users/register');
 })
-route.get('/google',passport.authenticate('google',{scope: ['profile','email']}));
-
-route.get('/google/callback', 
-	passport.authenticate('google', { failureRedirect: '/users/login' }),
-	(req, res)=> {
-    // Successful authentication, redirect home.
-    res.redirect('/ideas');
-});
 
 //Register from post
-route.post('/register',ensureOfficial,(req,res)=> {
+route.post('/register',ensureAdmin,(req,res)=> {
 	let errors = [];
 	
 	if(req.body.password != req.body.password2)
@@ -66,33 +60,23 @@ route.post('/register',ensureOfficial,(req,res)=> {
 	else
 	{
 		
-		e_id.findOne({email:req.body.email})
-		.then(user => 
+		User.findOne({email:req.body.email})
+		.then(old_user => 
 		{
-			if(user)
+			if(old_user)
 			{
 				req.flash('error_msg','Email already registered');
 				res.redirect('/users/register');
 			}
 			else
 			{
-				const eid = new e_id(
-				{	
-					email: req.body.email
-
-				});
-				var id;
-
-				eid.save()
-				.then(newEid=>{
-					const newUser = new User(
+				const newUser = new User(
 					{
-						user_id: newEid._id,
 						name: req.body.name,
 						email: req.body.email,
 						password: req.body.password,
 						pvtEncryptedKey: '' ,						
-						role: req.body.accountType
+						role: 'official'
 					});
 
 					bcrypt.genSalt(10,(err,salt)=>{
@@ -108,8 +92,8 @@ route.post('/register',ensureOfficial,(req,res)=> {
 							newUser.save()
 							.then(user => {
 								console.log(user);
-								req.flash('success_msg','You are now registered and can log in');
-								res.redirect('/users/login');
+								req.flash('success_msg','Official Registration Successful. Create another account');
+								res.redirect('/users/register');
 							})
 							.catch(err=> {
 								console.log(err);
@@ -117,10 +101,6 @@ route.post('/register',ensureOfficial,(req,res)=> {
 							})
 						});
 					});
-				})
-				.catch(err=>{
-					console.log(err);
-				});
 			}		
 		});
 	}
@@ -137,11 +117,6 @@ route.get('/updatePassword',ensureAuthenticated,(req,res)=>{
 })
 
 route.post('/updatePassword',ensureAuthenticated,(req,res)=>{
-	// if(req.body.oldPassword != req.body.user.password)
-	// {
-	// req.flash('error_msg','Incorrect Password');
-	// res.redirect('/users/updatePassword');
-	// }
 	if(req.body.newPassword != req.body.newPassword2 )
 	{
 	req.flash('error_msg','Passwords do not match');
@@ -160,12 +135,6 @@ route.post('/updatePassword',ensureAuthenticated,(req,res)=>{
 		 	password: req.body.newPassword,
 		 	pvtEncryptedKey:encryptedPrivatekey 
 		 };
-		 // User.findOneandUpdate({
-		 // 	user_id:req.user.id
-		 // },newUser,{upsert:true})
-		 // .then(user=>{
-		 // 	console.log(user);
-		 // });
 		 
 		 User.findOne({
 		 	user_id:req.user.user_id

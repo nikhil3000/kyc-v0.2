@@ -3,7 +3,7 @@
 	<img src="{{url}}" style="width:200px;height:200px;">
 </div>
 
-<div class="btn btn-primary" onclick="transac">Try Again</div>
+<div class="btn btn-primary mt-2 tryAgain">Try Again</div>
 
 <script>
 function transac()
@@ -12,28 +12,47 @@ function transac()
 	web3.version.getNetwork((err, netId) => {
 		if(netId==4)
 		{
-			kyc.addCustomer("{{id}}","{{signature}}","{{pkUser}}",(err,result)=>{
-				if(!err)
-				{
-					console.log(result);
-					window.alert('Data successfully pushed to blockchain');
-					// var text = "{{text}}";
-					$.post('/ideas/sendEmail',{id:'{{id}}',text:"{{text}}",attachments:"{{url}}"},function(){console.log('send')});
-				}
-				else
-				{
-					console.log(err);
-					window.alert('Some Error occured. Please check logs');
-				}
-			});		
-		}
+			if(web3.eth.accounts.length == 0)
+				window.alert('Your browser is not web3 enabled. Consider using Metamask and ensure that you are logged in to it. Then try again ');
+			else
+			{
+				kyc.addCustomer("{{id}}","{{signature}}","{{pkUser}}",(err,result)=>{
+					if(!err)
+					{
+						console.log(result);
+						window.alert('Data successfully pushed to blockchain');
+						$.post('/ideas/sendEmail',{id:'{{id}}',text:"{{text}}",attachments:"{{url}}"},
+							function(status)
+							{
+								console.log(status);
+								if(status == 'err')
+									console.log('email failed');
+				
+								else if(status=='success')
+								{
+									console.log('email sent successfully');
+								}
+							});
+					}
+					else
+					{
+						console.log(err);
+						window.alert('Some Error occured. Please check logs');
+					}
+				});
+			}
+		}	
 		else
 		{
-			window.alert('Please switch to rinkeby nad try again')
+			window.alert('Please switch to rinkeby and try again')
 		}
 	})
 }
 
 	transac();
+
+	$(".tryAgain").click(function(){
+		transac();
+	})
 
 </script>

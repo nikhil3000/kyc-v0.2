@@ -16,19 +16,10 @@ var obpar = '';
 const route = express.Router();
 const {ensureOfficial,ensureAuthenticated} = require('../helper/auth');
 
-var transporter1 = nodemailer.createTransport({
-	service:'gmail',
-	auth:
-	{
-		user:'automated.nikhilyadav3000@gmail.com',
-		passs: 'nodemailerPassword'
-	}
-});
-
 var transporter = nodemailer.createTransport(
-	'smtps://automated.nikhilyadav3000%40gmail.com:nodemailerPassword@smtp.gmail.com');
+	'smtps://'+process.env.NODEMAILERUSER+':'+process.env.NODEMAILERPASSWORD +'@smtp.gmail.com');
 
-web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/e4aa0a488ffa4b1595d3c899748448ba'));
+web3 = new Web3(new Web3.providers.HttpProvider(process.env.RINKEBY));
 var kycContract = web3.eth.contract([{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewKey","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"},{"name":"_pkuser","type":"string"}],"name":"addCustomer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[],"name":"kill","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewSignature","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"customer","outputs":[{"name":"signature","type":"string"},{"name":"pkuser","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"}],"name":"updateData","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"id","type":"string"},{"indexed":false,"name":"index","type":"uint256"}],"name":"custId","type":"event"}]);
 kyc = kycContract.at("0xe88cae0766cf16ca91a1b8a12fb271cb27ee7874");
 
@@ -113,137 +104,117 @@ route.get('/add',ensureOfficial,(req,res) =>{
 //Send Email  
 //send id of receiver + text to be sent
 route.post('/sendEmail',ensureOfficial,(req,res)=>{
-	email(req.body);
-	res.send('success');
-		
-	});
+	var result = email(req.body);
+	console.log(result);
+	res.send(result);
+
+});
 
 
 // Process Form to add data to db when submit button is clicked in add idea page
 route.post('/sign',ensureOfficial,(req,res)=>{
-	let errors = [];
-	console.log('sign');
+	
 
-	if(!req.body.name)
-	{
-		errors.push({text:'Please enter a Name'});
-	}
-	if(!req.body.email)
-	{
-		errors.push({text:'Please enter an e-mail'});
-	}
-	if(!req.body.address)
-	{
-		errors.push({text:'Please enter an address'});
-	}
-	if(!req.body.addressProof)
-	{
-		errors.push({text:'Please enter an Address proof'});
-	}
-	if(!req.body.identityProof)
-	{
-		errors.push({text:'Please enter an Identity proof'});
-	}
-
-	if(errors.length > 0)
-	{
-		res.render('ideas/add',{
-			errors:errors,
-			name: req.body.name,
-			email: req.body.email,
-			address: req.body.address,
-			addressProof: req.body.addressProof,
-			identityProof: req.body.identityProof
-		});
-	} 
-	else
-	{
-		//sign data
-		const data = req.body.name + '&' + req.body.address + '&' + req.body.addressProof + '&' + req.body.identityProof;
-		var msg = crypto.createHash("sha256").update(data).digest();
-		//var buff = Buffer.from(req.body.key,'hex');
-		var id = crypto.createHash("sha256").update(data+Date.now()).digest();
-		//generate QR code using 
-		//encrypt data + public key of verifier + user id
-		var pass = generatePassword();
-		//generate key pair for user encryption
-		var pvtKeyBuff = crypto.randomBytes(32);
-		var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
-		//create user account
-
-		const newCust={
-			user_id:id.toString('hex'),
-			name:req.body.name,
-			email:req.body.email,
-			role:'cust'
-		};
-
-		bcrypt.genSalt(10,(err,salt)=>{
-			bcrypt.hash(pass,salt,(err,hashedPassword)=>{
-				if(err) throw err; 
-				//encrypting newly generated user's private key with password
-				const cipher = crypto.createCipher('aes192', hashedPassword);
-				let encryptedKey = cipher.update(pvtKeyBuff.toString('hex'), 'hex', 'hex');
-				encryptedKey += cipher.final('hex');
-								
-				newCust.password = hashedPassword;
-				newCust.pvtEncryptedKey = encryptedKey;
-				new user(newCust)
-				.save()
-				.then(user => {
-					console.log(user);
-				})
-				.catch(err=> {
-					console.log(err);
-					return;
-				})
+	user.findOne({email:req.body.email})
+	.then(existing_user=>{
+		if(existing_user)
+		{
+			req.flash('error_msg','Email is already in use');
+			res.render('ideas/add',{
+				errors:'Email is already in use',
+				name: req.body.name,
+				email: req.body.email,
+				address: req.body.address,
+				addressProof: req.body.addressProof,
+				identityProof: req.body.identityProof
 			});
-		});
+		}
+		else
+		{
+			//sign data
+			const data = req.body.name + '&' + req.body.address + '&' + req.body.addressProof + '&' + req.body.identityProof;
+			var msg = crypto.createHash("sha256").update(data).digest();
+			//var buff = Buffer.from(req.body.key,'hex');
+			var id = crypto.createHash("sha256").update(data+Date.now()).digest();
+			//generate QR code using 
+			//encrypt data + public key of verifier + user id
+			var pass = generatePassword();
+			//generate key pair for user encryption
+			var pvtKeyBuff = crypto.randomBytes(32);
+			var pubKeyBuff = eccrypto.getPublic(pvtKeyBuff);
+			//create user account
 
-		eccrypto.encrypt(pubKeyBuff,Buffer(data))
-		.then(function(encrypted){
-			
-			var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
-			//var privateKeyBuffsign = str2buff(req.body.key);
-			//decrypring private key to generate public key of sign
-			
-			const decipher = crypto.createDecipher('aes192', req.user.password);
-			let decrypted = decipher.update(req.user.pvtEncryptedKey, 'hex', 'utf-8');
-			decrypted += decipher.final('utf-8');
-			console.log('decrypted');
-			console.log(decrypted);
-			var privateKeyBuffsign = Buffer.from(decrypted,'hex');
-			console.log(privateKeyBuffsign);
+			const newCust={
+				user_id:id.toString('hex'),
+				name:req.body.name,
+				email:req.body.email,
+				role:'cust'
+			};
 
-			var publicKeysign = eccrypto.getPublic(privateKeyBuffsign);
-			var pubKeyStr = publicKeysign.toString('hex');
-			var idStr = id.toString('hex');
-			var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
-			console.log(QRdata);
-			QRCode.toDataURL(QRdata, function (err, url) { 
-				eccrypto.sign(privateKeyBuffsign, msg)
-				.then(function(sig) 
-				{
-					console.log("Signature in DER forsmat:", sig.toString('hex'));
-					var mailText = 'Your details have been verified. Please use these credentials to login to your account # User Id: '+ req.body.email +'# Password: '+pass+'##Please change your password ASAP. ## PFA your QR code ## Private key in plain text : '+ pvtKeyBuff.toString('hex');
-					res.render('ideas/dispQR',{
-						url:url,
-						id: idStr,
-						signature: sig.toString('hex'),
-						pkUser: pubKeyBuff.toString('hex'),
-						text: mailText
+			bcrypt.genSalt(10,(err,salt)=>{
+				bcrypt.hash(pass,salt,(err,hashedPassword)=>{
+					if(err) throw err; 
+					//encrypting newly generated user's private key with password
+					const cipher = crypto.createCipher('aes192', hashedPassword);
+					let encryptedKey = cipher.update(pvtKeyBuff.toString('hex'), 'hex', 'hex');
+					encryptedKey += cipher.final('hex');
+
+					newCust.password = hashedPassword;
+					newCust.pvtEncryptedKey = encryptedKey;
+					new user(newCust)
+					.save()
+					.then(user => {
+						console.log(user);
 					})
-				});				
+					.catch(err=> {
+						console.log(err);
+						return;
+					})
+				});
+			});
+
+			eccrypto.encrypt(pubKeyBuff,Buffer(data))
+			.then(function(encrypted){
+				
+				var encpStr = encrypted.iv.toString('hex')+'&'+encrypted.ephemPublicKey.toString('hex')+'&'+encrypted.ciphertext.toString('hex')+'&'+encrypted.mac.toString('hex');
+				//var privateKeyBuffsign = str2buff(req.body.key);
+				//decrypring private key to generate public key of sign
+				
+				const decipher = crypto.createDecipher('aes192', req.user.password);
+				let decrypted = decipher.update(req.user.pvtEncryptedKey, 'hex', 'utf-8');
+				decrypted += decipher.final('utf-8');
+				console.log('decrypted');
+				console.log(decrypted);
+				var privateKeyBuffsign = Buffer.from(decrypted,'hex');
+				console.log(privateKeyBuffsign);
+
+				var publicKeysign = eccrypto.getPublic(privateKeyBuffsign);
+				var pubKeyStr = publicKeysign.toString('hex');
+				var idStr = id.toString('hex');
+				var QRdata = encpStr + '&' + pubKeyStr + '&' + idStr;
+				console.log(QRdata);
+				QRCode.toDataURL(QRdata, function (err, url) { 
+					eccrypto.sign(privateKeyBuffsign, msg)
+					.then(function(sig) 
+					{
+						console.log("Signature in DER forsmat:", sig.toString('hex'));
+						var mailText = 'Your details have been verified. Please use these credentials to login to your account # User Id: '+ req.body.email +'# Password: '+pass+'##Please change your password ASAP. ## PFA your QR code ## Private key in plain text : '+ pvtKeyBuff.toString('hex');
+						res.render('ideas/dispQR',{
+							url:url,
+							id: idStr,
+							signature: sig.toString('hex'),
+							pkUser: pubKeyBuff.toString('hex'),
+							text: mailText
+						})
+					});				
+				})		
 			})
-
-			
-
-		})
-		.catch(function(err){
-			console.log('encryption failed');
-			console.log(err);
-		})
-	}
+			.catch(function(err){
+				console.log('encryption failed');
+				console.log(err);
+			})
+		}
+	});
 });
 
 route.get('/qr',ensureOfficial,(req,res) =>{
@@ -263,11 +234,11 @@ route.post('/generateotp',ensureOfficial,(req,res)=>{
 	new Otp(newOtp)
 	.save()
 	.then(otp => {
-			console.log('random otp string saved with user id in db');
-		})
+		console.log('random otp string saved with user id in db');
+	})
 	.catch(err=>{
-			console.log(err);
-		})
+		console.log(err);
+	})
 	//pkuser will be available from blockchain
 	// var pkuser='049cda8845e03d4e9b43f014dff653350621d75b9669357f67abb2a70973d0e6e0ac456553c4beb7e5c0e97da48d4a5cdedbd4d5218cc4eae918fc7a3e0b473526';
 	kyc.viewKey(arr[5],(err,result)=>{
@@ -441,24 +412,24 @@ function str2buff(str)
 		return pubKeyBuff;	
 	}
 
-function email(obpar)
-{
-	console.log('sendEmail');
-	user.findOne({user_id:obpar.id})
-	.then(user=>{
+	function email(obpar)
+	{
+		console.log('sendEmail');
+		user.findOne({user_id:obpar.id})
+		.then(user=>{
 
-		var res = obpar.text.replace(/#/g,'\n');
-		console.log(res);
-		var mailOptions ={
-			from: 'automated.nikhilyadav3000@gmail.com',
-			to: user.email,	
-			subject : 'KYC Registration',
-			text: res
-		};
+			var res = obpar.text.replace(/#/g,'\n');
+			console.log(res);
+			var mailOptions ={
+				from: 'automated.nikhilyadav3000@gmail.com',
+				to: user.email,	
+				subject : 'KYC Registration',
+				text: res
+			};
 
-		if(obpar.attachments)
-		{
-			
+			if(obpar.attachments)
+			{
+
 			// obpar.attachments = JSON.toString(obpar.attachments);
 			// var imageURI = obpar.attachments;
 			// var image = ImageDataURI.decode(imageURI);
@@ -466,8 +437,8 @@ function email(obpar)
 			let filePath = './qrCode1';
 			ImageDataURI.outputFile(dataURI, filePath)
 			.then(qrpath=>{
-			console.log(qrpath);
-			var img = fs.readFileSync(qrpath);
+				console.log(qrpath);
+				var img = fs.readFileSync(qrpath);
 			// mailOptions.attachments = [{filename:'qrCode1',contents:img}];
 			mailOptions.attachments = [{path:qrpath}];
 			transporter.sendMail(mailOptions,function(err,info)
@@ -484,18 +455,25 @@ function email(obpar)
 				}
 			});
 
-			})
+		})
 		}
 		else
 		{
 			transporter.sendMail(mailOptions,function(err,info){
-			if(err)
-				console.log(err);
-			console.log(info);
+				if(err)
+				{
+					console.log(err);
+					return 'err';
+				}
+				else
+				{
+					console.log(info);
+					return 'success'; 
+				}
 			});			
 		}
 	})
-}
+	}
 
 	function delimit(str)
 	{

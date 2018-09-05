@@ -6,9 +6,29 @@ const flash = require('connect-flash');
 const session = require('express-session');
 const passport = require('passport')
 const methodOverride = require('method-override');
+require('dotenv').config();
 const app = express();
 const db = require('./config/database')
+require('./models/users');
+const User = mongoose.model('users');
+
+User.findOne({email:'admin@gmail.com'})
+	.then(admin=>{
+		if(!admin)
+		{
+			console.log('admin added');
+			const newUser = new User(
+			{
+				email: 'admin@gmail.com',
+				password: process.env.ADMIN_PASSWORD,					
+				role: 'admin'
+			});
+			newUser.save();
+		}
+	});
+
 console.log(db.mongoURI);
+
 
 //Mongoose connection
 mongoose.connect(db.mongoURI,{useNewUrlParser :true})
@@ -29,7 +49,7 @@ app.use(methodOverride('_method'));
 
 //express session middleware
 app.use(session({
-  secret: 'secret',
+  secret: process.env.SESSION_SECRET,
   resave: true,
   saveUninitialized: true,
  }));

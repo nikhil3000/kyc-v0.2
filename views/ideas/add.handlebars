@@ -3,23 +3,23 @@
 	<form action="/ideas/sign" method="post">
 		<div class="form-group">
 			<label for="name">Name</label>
-			<input type="text" name="name" class="form-control" value={{name}}>
+			<input type="text" name="name" class="form-control" required="true" value={{name}} >
 		</div>
 		<div class="form-group">
 			<label for="name">E-mail</label>
-			<input type="email" name="email" class="form-control" value={{email}}>
+			<input type="email" name="email" class="form-control" required="true" value={{email}} >
 		</div>
 		<div class="form-group">
 			<label for="address">Address</label>
-			<textarea class="form-control" name="address">{{address}}</textarea>
+			<textarea class="form-control" name="address" required="true">{{address}}</textarea>
 		</div>
 		<div class="form-group">
 			<label for="identity-proof">Identity proof</label>
-			<input type="text" name="identityProof" placeholder="Ex: Aadhar Number" class="form-control" value={{identity-proof}}>
+			<input type="text" name="identityProof" placeholder="Ex: Aadhar Number" required="true" class="form-control" value={{identity-proof}} >
 		</div>
 		<div class="form-group">
 			<label for="address-proof">Address proof</label>
-			<input type="text" name="addressProof" class="form-control" value={{address-proof}}>
+			<input type="text" name="addressProof" class="form-control" required="true" value={{address-proof}} >
 		</div>
 		<button type="submit" class="btn btn-primary">Sign and Submit</button>
 	</form>
