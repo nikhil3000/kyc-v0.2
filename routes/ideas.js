@@ -3,10 +3,13 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
-const nodemailer = require('nodemailer');
+// const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const Web3 = require('web3');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 
 const ImageDataURI = require('image-data-uri');
 var generatePassword = require('password-generator');
@@ -16,8 +19,8 @@ var obpar = '';
 const route = express.Router();
 const {ensureOfficial,ensureAuthenticated} = require('../helper/auth');
 
-var transporter = nodemailer.createTransport(
-	'smtps://'+process.env.NODEMAILERUSER+':'+process.env.NODEMAILERPASSWORD +'@smtp.gmail.com');
+// var transporter = nodemailer.createTransport(
+// 	'smtps://'+process.env.NODEMAILERUSER+':'+process.env.NODEMAILERPASSWORD +'@smtp.gmail.com');
 
 web3 = new Web3(new Web3.providers.HttpProvider(process.env.RINKEBY));
 var kycContract = web3.eth.contract([{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewKey","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"},{"name":"_pkuser","type":"string"}],"name":"addCustomer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[],"name":"kill","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_id","type":"string"}],"name":"viewSignature","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"customer","outputs":[{"name":"signature","type":"string"},{"name":"pkuser","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"string"},{"name":"_signature","type":"string"}],"name":"updateData","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"id","type":"string"},{"indexed":false,"name":"index","type":"uint256"}],"name":"custId","type":"event"}]);
@@ -441,7 +444,7 @@ function str2buff(str)
 				var img = fs.readFileSync(qrpath);
 			// mailOptions.attachments = [{filename:'qrCode1',contents:img}];
 			mailOptions.attachments = [{path:qrpath}];
-			transporter.sendMail(mailOptions,function(err,info)
+			sgMail.send(mailOptions,function(err,info)
 			{
 				if(err)
 					console.log(err);
@@ -459,7 +462,7 @@ function str2buff(str)
 		}
 		else
 		{
-			transporter.sendMail(mailOptions,function(err,info){
+			sgMail.send(mailOptions,function(err,info){
 				if(err)
 				{
 					console.log(err);
