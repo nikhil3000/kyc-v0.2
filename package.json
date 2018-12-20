@@ -27,6 +27,7 @@
     "passport-google-oauth20": "^1.0.0",
     "passport-local": "^1.0.0",
     "password-generator": "^2.2.0",
+    "piexifjs": "^1.0.4",
     "qrcode": "^1.2.2",
     "web3": "^0.20.0"
   }

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 const QRCode = require('qrcode');
+
 // const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
 const Web3 = require('web3');
@@ -421,36 +422,34 @@ function email(obpar) {
 				// var imageURI = obpar.attachments;
 				// var image = ImageDataURI.decode(imageURI);
 				let dataURI = obpar.attachments;
+				console.log(dataURI);
+				base64 = dataURI.replace(/^data:image\/png;base64,/, "");
+				var n = base64.indexOf("&");
+				base64 = base64.slice(0,n);
+				if( base64.length%4==1)
+				base64+="===";
+				else if (base64.length%4==2)
+				base64+="==";
+				else if (base64.length%4==3)
+				base64+="=";				
+				console.log("333333333333333333333333");
+				console.log(base64);
 				mailOptions.attachments = [
 					{
 						filename: 'qrcode.jpeg',
-						content:dataURI.substring(22),
+						content:base64,//dataURI.substring(22),
 						type:'image/jpeg'
 					}
 				];
-				// sgMail.send(mailOptions, function (err, info) {
-				// 	if (err)
-				// 	{
-				// 		console.log(err);
-				// 		console.log(err.response.body);
-						
-				// 	}
-				// 	else {
-				// 		console.log(info);
-				// 		fs.unlink(qrpath, err => {
-				// 			if (err)
-				// 				throw err;
-				// 		});
-				// 	}
-				// });
 			}
+	
 			sgMail.send(mailOptions, function (err, info) {
 				if (err) {
 					console.log(err.response.body);
 					return 'err';
 				}
 				else {
-					console.log(info);
+					// console.log(info);
 					return 'success';
 				}
 			});
