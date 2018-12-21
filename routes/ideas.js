@@ -408,7 +408,7 @@ function email(obpar) {
 		.then(user => {
 
 			var res = obpar.text.replace(/#/g, '\n');
-			console.log(res);
+			// console.log(res);
 			var mailOptions = {
 				from: 'automated.nikhilyadav3000@gmail.com',
 				to: user.email,
@@ -422,7 +422,7 @@ function email(obpar) {
 				// var imageURI = obpar.attachments;
 				// var image = ImageDataURI.decode(imageURI);
 				let dataURI = obpar.attachments;
-				console.log(dataURI);
+				// console.log(dataURI);
 				base64 = dataURI.replace(/^data:image\/png;base64,/, "");
 				var n = base64.indexOf("&");
 				base64 = base64.slice(0,n);
@@ -432,8 +432,8 @@ function email(obpar) {
 				base64+="==";
 				else if (base64.length%4==3)
 				base64+="=";				
-				console.log("333333333333333333333333");
-				console.log(base64);
+				
+				// console.log(base64);
 				mailOptions.attachments = [
 					{
 						filename: 'qrcode.jpeg',
